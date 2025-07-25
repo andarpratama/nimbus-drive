@@ -20,7 +20,6 @@ func main() {
 	}
 	database.ConnectRedis()
 
-	// ✅ AutoMigrate all models
 	if err := database.DB.AutoMigrate(
 		&models.User{},
 		&models.File{},
@@ -32,18 +31,22 @@ func main() {
 	}
 	log.Println("✅ AutoMigrate successful")
 
+	// ❌ FIXED: only one instance of gin.Default
 	r := gin.Default()
+
+	// Register API routes
+	routes.RegisterRoutes(r)
+
+	// Optional: health check
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"msg": "pong"})
 	})
-
-	api := r.Group("/api")
-	routes.RegisterAuthRoutes(api)
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"msg": "Hello World"})
 	})
 
+	// Run the server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
