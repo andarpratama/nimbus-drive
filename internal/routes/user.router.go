@@ -8,7 +8,11 @@ import (
 
 func RegisterUserRoutes(r *gin.RouterGroup) {
 	users := r.Group("/users")
-	users.Use(middleware.AuthMiddleware())
+	users.Use(
+		middleware.AuthMiddleware(),
+		middleware.RequireRoles("admin", "superadmin"),
+	)
+
 	users.GET("", handlers.GetAllUsers)
 	users.GET("/:id", handlers.GetUserByID)
 }

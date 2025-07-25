@@ -15,4 +15,5 @@ type User struct {
 	Name     string `gorm:"type:varchar(255);not null"`
 	Email    string `gorm:"type:varchar(255);uniqueIndex;not null"`
 	Password string `gorm:"type:varchar(255);not null"`
+	Role     string `gorm:"type:ENUM('superadmin','admin','user');default:'user'"`
 }

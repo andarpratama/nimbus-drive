@@ -60,7 +60,7 @@ func UploadFile(c *gin.Context) {
 }
 
 func DownloadFile(c *gin.Context) {
-	userID := c.GetUint("user_id")
+	userID := c.GetUint("userID")
 	fileID := c.Param("id")
 
 	var file models.File
@@ -75,7 +75,7 @@ func DownloadFile(c *gin.Context) {
 }
 
 func ListFiles(c *gin.Context) {
-	userID := c.GetUint("user_id")
+	userID := c.GetUint("userID")
 
 	var files []models.File
 	if err := database.DB.

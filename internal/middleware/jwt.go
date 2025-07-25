@@ -72,6 +72,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		log.Println("userID", claims.UserID)
 
 		c.Set("userID", claims.UserID)
+		c.Set("role", claims.Role)
 		c.Next()
 	}
 }
