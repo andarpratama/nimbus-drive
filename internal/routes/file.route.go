@@ -10,7 +10,9 @@ func RegisterFileRoutes(files *gin.RouterGroup) {
 	protected := files.Group("/files")
 	protected.Use(middleware.AuthMiddleware())
 
-	files.POST("/upload", handlers.UploadFile)
-	files.GET("/:id/download", handlers.DownloadFile)
-	files.GET("", handlers.ListFiles)
+	protected.POST("/upload", handlers.UploadFile)
+	protected.GET("/:id/download", handlers.DownloadFile)
+	protected.DELETE("/:id", handlers.DeleteFile)
+	protected.GET("", handlers.ListFiles)
+	protected.GET("/trash", handlers.GetTrashedFiles)
 }

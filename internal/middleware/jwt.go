@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -67,6 +68,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		log.Println("userID", claims.UserID)
 
 		c.Set("userID", claims.UserID)
 		c.Next()

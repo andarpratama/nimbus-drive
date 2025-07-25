@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,7 +14,8 @@ import (
 )
 
 func UploadFile(c *gin.Context) {
-	userID := c.GetUint("user_id") // assuming JWT middleware sets this
+	userID := c.GetUint("userID")
+	log.Println("userID", userID)
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -85,4 +87,39 @@ func ListFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"files": files})
+}
+
+func DeleteFile(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	fileID := c.Param("id")
+
+	var file models.File
+	if err := database.DB.
+		Where("id = ? AND user_id = ?", fileID, userID).
+		First(&file).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	// Soft delete
+	if err := database.DB.Delete(&file).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "file moved to trash"})
+}
+
+func GetTrashedFiles(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var trashed []models.File
+	if err := database.DB.Unscoped(). // include soft-deleted
+						Where("user_id = ? AND deleted_at IS NOT NULL", userID).
+						Find(&trashed).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trash"})
+		return
+	}
+
+	c.JSON(http.StatusOK, trashed)
 }
