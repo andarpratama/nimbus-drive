@@ -3,16 +3,33 @@ version: "3.8"
 services:
   app:
     build:
-      context: .
+      context: ./server
       dockerfile: Dockerfile.dev
     ports:
       - "8080:8080"
     volumes:
-      - .:/app
+      - ./server:/app
       - ./uploads:/app/uploads
+      - ./.env:/app/.env
+    env_file:
+      - .env
     depends_on:
       - db
       - redis
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"           # Vite default port
+    volumes:
+      - ./client:/app
+      - /app/node_modules     # Exclude node_modules from host mount
+    env_file:
+      - .env
+    stdin_open: true          # required for Vite HMR
+    tty: true
 
   db:
     image: mysql:8
@@ -20,7 +37,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: nimbus_drive
-      MYSQL_USER: nimbus              # ✅ A safe non-root user
+      MYSQL_USER: nimbus
       MYSQL_PASSWORD: secret
     ports:
       - "3307:3306"
