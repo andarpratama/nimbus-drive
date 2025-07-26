@@ -12,19 +12,42 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'double-click', 'star-toggle'])
+const emit = defineEmits(['select', 'double-click', 'star-toggle', 'context-menu'])
 
 const getFileIcon = (type) => {
   const icons = {
+    // Documents
     document: '📄',
     pdf: '📕',
-    folder: '📁',
-    image: '🖼️',
+    text: '📝',
+    
+    // Spreadsheets
     spreadsheet: '📊',
-    presentation: '📽️',
+    
+    // Presentations
+    presentation: '📋',
+    
+    // Images
+    image: '🖼️',
+    
+    // Media
     video: '🎥',
     audio: '🎵',
-    archive: '📦'
+    
+    // Archives
+    archive: '📦',
+    
+    // Code
+    code: '💻',
+    
+    // Data
+    data: '📊',
+    
+    // Executables
+    executable: '⚙️',
+    
+    // Folders
+    folder: '📁'
   }
   return icons[type] || '📄'
 }
@@ -55,12 +78,19 @@ const handleStarToggle = (event) => {
   event.stopPropagation()
   emit('star-toggle', props.item.id)
 }
+
+const handleContextMenu = (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  emit('context-menu', { event, item: props.item })
+}
 </script>
 
 <template>
   <div
     @click="handleClick"
     @dblclick="handleDoubleClick"
+    @contextmenu="handleContextMenu"
     :class="[
       'relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md group',
       isSelected
@@ -86,7 +116,10 @@ const handleStarToggle = (event) => {
       </div>
       <!-- File icon for non-images -->
       <div v-else class="text-4xl mb-2">{{ getFileIcon(item.type) }}</div>
-      <div class="text-xs text-gray-500 dark:text-gray-400">{{ item.size }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400">
+        <span v-if="item.type === 'folder'">{{ item.size }}</span>
+        <span v-else>{{ item.size }}</span>
+      </div>
     </div>
     
     <!-- File name -->

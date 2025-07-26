@@ -9,6 +9,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetCurrentUser handles GET /user to fetch current authenticated user
+func GetCurrentUser(c *gin.Context) {
+	userID := c.GetUint("userID")
+	
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	
+	// Return user data without password
+	c.JSON(http.StatusOK, gin.H{
+		"id":       user.ID,
+		"name":     user.Name,
+		"username": user.Username,
+		"email":    user.Email,
+	})
+}
+
 // GetAllUsers handles GET /users to fetch all users
 func GetAllUsers(c *gin.Context) {
 	var users []models.User

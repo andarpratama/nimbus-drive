@@ -1,5 +1,8 @@
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const props = defineProps({
   currentView: {
@@ -11,18 +14,23 @@ const props = defineProps({
 const emit = defineEmits(['view-change', 'navigate-root'])
 
 const navigationItems = [
-  { id: 'my-drive', label: 'My Drive', icon: '📁' },
-  { id: 'shared', label: 'Shared with me', icon: '👥' },
-  { id: 'recent', label: 'Recent', icon: '🕒' },
-  { id: 'starred', label: 'Starred', icon: '⭐' },
-  { id: 'trash', label: 'Trash', icon: '🗑️' }
+  { id: 'my-drive', label: 'My Drive', icon: '📁', route: '/dashboard' },
+  { id: 'shared', label: 'Shared with me', icon: '👥', route: '/shared' },
+  { id: 'recent', label: 'Recent', icon: '🕒', route: '/recent' },
+  { id: 'starred', label: 'Starred', icon: '⭐', route: '/starred' },
+  { id: 'trash', label: 'Trash', icon: '🗑️', route: '/trash' }
 ]
 
 const handleViewChange = (viewId) => {
-  if (viewId === 'my-drive') {
-    emit('navigate-root')
+  const item = navigationItems.find(nav => nav.id === viewId)
+  if (item) {
+    if (item.route) {
+      router.push(item.route)
+    } else if (viewId === 'my-drive') {
+      emit('navigate-root')
+    }
+    emit('view-change', viewId)
   }
-  emit('view-change', viewId)
 }
 </script>
 

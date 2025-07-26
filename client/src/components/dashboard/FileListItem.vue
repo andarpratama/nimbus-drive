@@ -12,19 +12,42 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'double-click', 'star-toggle'])
+const emit = defineEmits(['select', 'double-click', 'star-toggle', 'context-menu'])
 
 const getFileIcon = (type) => {
   const icons = {
+    // Documents
     document: '📄',
     pdf: '📕',
-    folder: '📁',
-    image: '🖼️',
+    text: '📝',
+    
+    // Spreadsheets
     spreadsheet: '📊',
-    presentation: '📽️',
+    
+    // Presentations
+    presentation: '📋',
+    
+    // Images
+    image: '🖼️',
+    
+    // Media
     video: '🎥',
     audio: '🎵',
-    archive: '📦'
+    
+    // Archives
+    archive: '📦',
+    
+    // Code
+    code: '💻',
+    
+    // Data
+    data: '📊',
+    
+    // Executables
+    executable: '⚙️',
+    
+    // Folders
+    folder: '📁'
   }
   return icons[type] || '📄'
 }
@@ -55,17 +78,30 @@ const handleStarToggle = (event) => {
   event.stopPropagation()
   emit('star-toggle', props.item.id)
 }
+
+const handleContextMenu = (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  emit('context-menu', { event, item: props.item })
+}
+
+const handleMoreOptionsClick = (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  emit('context-menu', { event, item: props.item })
+}
 </script>
 
 <template>
   <div
     @click="handleClick"
     @dblclick="handleDoubleClick"
+    @contextmenu="handleContextMenu"
     :class="[
-      'flex items-center p-3 rounded-lg cursor-pointer transition-colors',
+      'flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700',
       isSelected
-        ? 'bg-blue-100 dark:bg-blue-900/20'
-        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+        ? 'bg-blue-100 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600'
+        : 'hover:bg-gray-50 dark:hover:bg-gray-700'
     ]"
   >
     <!-- Selection checkbox -->
@@ -121,7 +157,10 @@ const handleStarToggle = (event) => {
     </div>
     
     <!-- More options -->
-    <button class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
+    <button 
+      @click="handleMoreOptionsClick"
+      class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400"
+    >
       ⋮
     </button>
   </div>

@@ -1,7 +1,8 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-const emit = defineEmits(['navigate'])
+const router = useRouter()
 
 const form = ref({
   name: '',
@@ -71,7 +72,7 @@ const handleSubmit = async () => {
       }
       // Navigate to login after successful registration
       setTimeout(() => {
-        emit('navigate', 'login')
+        router.push('/login')
       }, 2000)
     } else {
       error.value = data.error || 'Registration failed'
@@ -85,7 +86,7 @@ const handleSubmit = async () => {
 }
 
 const goToLogin = () => {
-  emit('navigate', 'login')
+  router.push('/login')
 }
 </script>
 

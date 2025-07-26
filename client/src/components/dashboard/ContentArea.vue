@@ -33,7 +33,8 @@ const emit = defineEmits([
   'item-select', 
   'item-double-click', 
   'item-star-toggle',
-  'retry'
+  'retry',
+  'context-menu'
 ])
 
 const handleItemSelect = (itemId) => {
@@ -48,13 +49,27 @@ const handleItemStarToggle = (itemId) => {
   emit('item-star-toggle', itemId)
 }
 
+const handleContextMenu = (data) => {
+  emit('context-menu', data)
+}
+
+const handleEmptySpaceContextMenu = (event) => {
+  // Only trigger if clicking on the content area itself, not on items
+  if (event.target === event.currentTarget) {
+    emit('context-menu', { event, item: null })
+  }
+}
+
 const handleRetry = () => {
   emit('retry')
 }
 </script>
 
 <template>
-  <div class="flex-1 p-6 overflow-auto">
+  <div 
+    class="flex-1 p-6 overflow-auto"
+    @contextmenu="handleEmptySpaceContextMenu"
+  >
     <!-- Loading state -->
     <div v-if="loading" class="flex justify-center items-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -81,6 +96,7 @@ const handleRetry = () => {
         @item-select="handleItemSelect"
         @item-double-click="handleItemDoubleClick"
         @item-star-toggle="handleItemStarToggle"
+        @context-menu="handleContextMenu"
       />
 
       <!-- List View -->
@@ -91,6 +107,7 @@ const handleRetry = () => {
         @item-select="handleItemSelect"
         @item-double-click="handleItemDoubleClick"
         @item-star-toggle="handleItemStarToggle"
+        @context-menu="handleContextMenu"
       />
 
       <!-- Empty state -->

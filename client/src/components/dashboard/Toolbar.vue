@@ -1,11 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
-  breadcrumbs: {
-    type: Array,
-    required: true
-  },
   searchQuery: {
     type: String,
     required: true
@@ -23,10 +19,11 @@ const props = defineProps({
 const emit = defineEmits([
   'search-change', 
   'view-mode-change', 
-  'navigate-breadcrumb', 
   'logout',
   'create-menu-toggle',
-  'upload-menu-toggle'
+  'upload-menu-toggle',
+  'upload-files',
+  'new-folder'
 ])
 
 const showCreateMenu = ref(false)
@@ -41,9 +38,7 @@ const handleViewModeChange = (mode) => {
   emit('view-mode-change', mode)
 }
 
-const handleBreadcrumbClick = (folderId) => {
-  emit('navigate-breadcrumb', folderId)
-}
+
 
 const handleLogout = () => {
   emit('logout')
@@ -54,6 +49,11 @@ const toggleCreateMenu = () => {
   emit('create-menu-toggle', showCreateMenu.value)
 }
 
+const handleNewFolder = () => {
+  showCreateMenu.value = false
+  emit('new-folder')
+}
+
 const toggleUploadMenu = () => {
   showUploadMenu.value = !showUploadMenu.value
   emit('upload-menu-toggle', showUploadMenu.value)
@@ -62,33 +62,33 @@ const toggleUploadMenu = () => {
 const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value
 }
+
+// Close dropdowns when clicking outside
+const handleClickOutside = (event) => {
+  if (!event.target.closest('.dropdown-container')) {
+    showCreateMenu.value = false
+    showUploadMenu.value = false
+    showUserMenu.value = false
+  }
+}
+
+// Add click outside listener
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
   <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
     <div class="flex items-center justify-between">
-      <!-- Left side: Breadcrumb and search -->
-      <div class="flex items-center space-x-4 flex-1">
-        <!-- Breadcrumb -->
-        <div class="flex items-center space-x-2 text-sm">
-          <button
-            v-for="(crumb, index) in breadcrumbs"
-            :key="crumb.id"
-            @click="handleBreadcrumbClick(crumb.id)"
-            :class="[
-              'hover:text-blue-600 dark:hover:text-blue-400 transition-colors',
-              index === breadcrumbs.length - 1 
-                ? 'text-gray-900 dark:text-white font-medium' 
-                : 'text-gray-600 dark:text-gray-400'
-            ]"
-          >
-            {{ crumb.name }}
-          </button>
-          <span v-if="breadcrumbs.length > 1" class="text-gray-400">/</span>
-        </div>
-        
+      <!-- Left side: Search -->
+      <div class="flex items-center flex-1">
         <!-- Search -->
-        <div class="relative flex-1 max-w-md">
+        <div class="relative max-w-md">
           <input
             :value="searchQuery"
             @input="handleSearchChange"
@@ -140,7 +140,10 @@ const toggleUserMenu = () => {
           <!-- Create dropdown -->
           <div v-if="showCreateMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
-              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button 
+                @click="handleNewFolder"
+                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
                 📁 New folder
               </button>
               <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -168,7 +171,10 @@ const toggleUserMenu = () => {
           <!-- Upload dropdown -->
           <div v-if="showUploadMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
-              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button 
+                @click="() => { emit('upload-files'); showUploadMenu = false; }"
+                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
                 📁 Upload files
               </button>
               <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">

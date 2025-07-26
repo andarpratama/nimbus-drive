@@ -13,7 +13,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['item-select', 'item-double-click', 'item-star-toggle'])
+const emit = defineEmits(['item-select', 'item-double-click', 'item-star-toggle', 'context-menu'])
 
 const handleItemSelect = (itemId) => {
   emit('item-select', itemId)
@@ -25,6 +25,10 @@ const handleItemDoubleClick = (item) => {
 
 const handleItemStarToggle = (itemId) => {
   emit('item-star-toggle', itemId)
+}
+
+const handleContextMenu = (data) => {
+  emit('context-menu', data)
 }
 </script>
 
@@ -38,6 +42,7 @@ const handleItemStarToggle = (itemId) => {
       @select="handleItemSelect"
       @double-click="handleItemDoubleClick"
       @star-toggle="handleItemStarToggle"
+      @context-menu="handleContextMenu"
     />
   </div>
 </template> 

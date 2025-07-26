@@ -1,7 +1,9 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-const emit = defineEmits(['navigate', 'login-success'])
+const router = useRouter()
+const emit = defineEmits(['login-success'])
 
 const form = ref({
   identifier: '', // email or username
@@ -35,7 +37,6 @@ const handleSubmit = async () => {
       localStorage.setItem('token', data.token)
       // Emit user data and navigate to dashboard
       emit('login-success', data.user)
-      emit('navigate', 'dashboard')
     } else {
       error.value = data.error || 'Login failed'
     }
@@ -48,7 +49,7 @@ const handleSubmit = async () => {
 }
 
 const goToRegister = () => {
-  emit('navigate', 'register')
+  router.push('/register')
 }
 </script>
 

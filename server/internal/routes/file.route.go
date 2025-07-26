@@ -15,4 +15,10 @@ func RegisterFileRoutes(files *gin.RouterGroup) {
 	protected.DELETE("/:id", handlers.DeleteFile)
 	protected.GET("", handlers.ListFiles)
 	protected.GET("/trash", handlers.GetTrashedFiles)
+	protected.PUT("/:id/move", handlers.MoveFile)
+	protected.POST("/:id/restore", handlers.RestoreFile)
+	protected.DELETE("/:id/permanent", handlers.PermanentlyDeleteFile)
+
+	// Public route for serving images (no authentication required)
+	files.Group("/files").GET("/:id/image", handlers.ServeImage)
 }

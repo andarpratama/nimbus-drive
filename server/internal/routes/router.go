@@ -8,5 +8,6 @@ func RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api")
 	RegisterAuthRoutes(api)
 	RegisterFileRoutes(api)
+	RegisterFolderRoutes(api)
 	RegisterUserRoutes(api)
 }

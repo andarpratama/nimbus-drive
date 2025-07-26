@@ -1,0 +1,437 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import Sidebar from './Sidebar.vue'
+import Toolbar from './Toolbar.vue'
+import ContentArea from './ContentArea.vue'
+import ContextMenu from './ContextMenu.vue'
+import ConfirmModal from './ConfirmModal.vue'
+import Notification from './Notification.vue'
+import Breadcrumb from './Breadcrumb.vue'
+import { useFileManager } from '../../composables/useFileManager'
+
+// Props to receive user data from parent
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
+
+const emit = defineEmits(['logout'])
+
+// Use the file manager composable
+const {
+  files,
+  folders,
+  currentFolderId,
+  currentFolder,
+  breadcrumbs,
+  loading,
+  error,
+  selectedItems,
+  allItems,
+  fetchFolderContents,
+  navigateToFolder,
+  navigateToBreadcrumb,
+  navigateToRoot,
+  selectItem,
+  isSelected,
+  clearSelection,
+  toggleStar
+} = useFileManager()
+
+// State management
+const currentView = ref('starred')
+const viewMode = ref('grid') // grid, list
+const searchQuery = ref('')
+
+// Context menu state
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  item: null
+})
+
+// Confirmation modal state
+const confirmModal = ref({
+  visible: false,
+  title: '',
+  message: '',
+  item: null,
+  action: ''
+})
+
+// Notification state
+const notification = ref({
+  visible: false,
+  type: 'success',
+  title: '',
+  message: ''
+})
+
+// Filtered items - only starred items
+const filteredItems = computed(() => {
+  let items = allItems.value.filter(item => item.starred)
+  
+  if (searchQuery.value) {
+    items = items.filter(item => 
+      item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    )
+  }
+  
+  return items
+})
+
+// Handle logout
+const handleLogout = () => {
+  emit('logout')
+}
+
+// Event handlers
+const handleViewChange = (viewId) => {
+  currentView.value = viewId
+}
+
+const handleSearchChange = (query) => {
+  searchQuery.value = query
+}
+
+const handleViewModeChange = (mode) => {
+  viewMode.value = mode
+}
+
+const handleItemSelect = (itemId) => {
+  selectItem(itemId)
+}
+
+const handleItemDoubleClick = (item) => {
+  if (item.type === 'folder') {
+    navigateToFolder(item.folderId)
+  } else {
+    // Handle file click (download, preview, etc.)
+    console.log('File clicked:', item)
+  }
+}
+
+const handleItemStarToggle = (itemId) => {
+  toggleStar(itemId)
+}
+
+const handleRetry = () => {
+  fetchFolderContents(currentFolderId.value)
+}
+
+const handleContextMenu = (data) => {
+  const { event, item } = data
+  
+  // Adjust position for three dots button to prevent overlap
+  let x = event.clientX
+  let y = event.clientY
+  
+  // If it's a click event (three dots button), adjust position
+  if (event.type === 'click') {
+    // Position menu to the left of the button to avoid overlap
+    x = event.clientX - 200 // Adjust based on menu width
+    y = event.clientY + 10  // Small offset below the button
+  }
+  
+  contextMenu.value = {
+    visible: true,
+    x: x,
+    y: y,
+    item: item
+  }
+}
+
+const handleContextMenuClose = () => {
+  contextMenu.value.visible = false
+}
+
+const handleContextMenuAction = (data) => {
+  const { action, item } = data
+  console.log('Context menu action:', action, 'on item:', item)
+  
+  // Handle different actions
+  switch (action) {
+    case 'rename':
+      console.log('Rename item:', item.name)
+      break
+    case 'delete':
+      showDeleteConfirmation(item)
+      break
+    case 'restore':
+      restoreItem(item)
+      break
+    case 'delete-permanent':
+      showPermanentDeleteConfirmation(item)
+      break
+    case 'download':
+      console.log('Download item:', item.name)
+      break
+    case 'star':
+      toggleStar(item.id)
+      break
+    case 'share':
+      console.log('Share item:', item.name)
+      break
+    case 'new-folder':
+      console.log('Create new folder')
+      break
+    case 'upload':
+      console.log('Upload files')
+      break
+    case 'select-all':
+      console.log('Select all items')
+      break
+    case 'preview':
+      console.log('Preview item:', item.name)
+      break
+    case 'move':
+      console.log('Move item:', item.name)
+      break
+    case 'copy':
+      console.log('Copy item:', item.name)
+      break
+    default:
+      console.log('Unknown action:', action)
+  }
+}
+
+const showDeleteConfirmation = (item) => {
+  const isFolder = item.type === 'folder'
+  confirmModal.value = {
+    visible: true,
+    title: `Delete ${isFolder ? 'Folder' : 'File'}`,
+    message: `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+    item: item,
+    action: 'delete'
+  }
+}
+
+const showPermanentDeleteConfirmation = (item) => {
+  const isFolder = item.type === 'folder'
+  confirmModal.value = {
+    visible: true,
+    title: `Permanently Delete ${isFolder ? 'Folder' : 'File'}`,
+    message: `Are you sure you want to permanently delete "${item.name}"? This action cannot be undone.`,
+    item: item,
+    action: 'delete-permanent'
+  }
+}
+
+const handleConfirmAction = () => {
+  const { action, item } = confirmModal.value
+  
+  switch (action) {
+    case 'delete':
+      deleteItem(item)
+      break
+    case 'delete-permanent':
+      permanentlyDeleteItem(item)
+      break
+  }
+  
+  confirmModal.value.visible = false
+}
+
+const handleConfirmCancel = () => {
+  confirmModal.value.visible = false
+}
+
+const handleConfirmClose = () => {
+  confirmModal.value.visible = false
+}
+
+const deleteItem = async (item) => {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    const token = localStorage.getItem('token')
+    
+    const endpoint = item.type === 'folder' 
+      ? `/api/folders/${item.folderId}` 
+      : `/api/files/${item.fileId}`
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      showNotification('success', 'Item moved to trash', `${item.name} has been moved to trash.`)
+      // Refresh the data
+      await fetchFolderContents(currentFolderId.value)
+    } else {
+      showNotification('error', 'Delete failed', 'Failed to delete the item.')
+    }
+  } catch (error) {
+    console.error('Delete error:', error)
+    showNotification('error', 'Delete failed', 'An error occurred while deleting the item.')
+  }
+}
+
+const permanentlyDeleteItem = async (item) => {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    const token = localStorage.getItem('token')
+    
+    const endpoint = item.type === 'folder' 
+      ? `/api/folders/${item.folderId}/permanent` 
+      : `/api/files/${item.fileId}/permanent`
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      showNotification('success', 'Item permanently deleted', `${item.name} has been permanently deleted.`)
+      // Refresh the data
+      await fetchFolderContents(currentFolderId.value)
+    } else {
+      showNotification('error', 'Delete failed', 'Failed to permanently delete the item.')
+    }
+  } catch (error) {
+    console.error('Permanent delete error:', error)
+    showNotification('error', 'Delete failed', 'An error occurred while permanently deleting the item.')
+  }
+}
+
+const restoreItem = async (item) => {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    const token = localStorage.getItem('token')
+    
+    const endpoint = item.type === 'folder' 
+      ? `/api/folders/${item.folderId}/restore` 
+      : `/api/files/${item.fileId}/restore`
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      showNotification('success', 'Item restored', `${item.name} has been restored.`)
+      // Refresh the data
+      await fetchFolderContents(currentFolderId.value)
+    } else {
+      showNotification('error', 'Restore failed', 'Failed to restore the item.')
+    }
+  } catch (error) {
+    console.error('Restore error:', error)
+    showNotification('error', 'Restore failed', 'An error occurred while restoring the item.')
+  }
+}
+
+const showNotification = (type, title, message) => {
+  notification.value = {
+    visible: true,
+    type,
+    title,
+    message
+  }
+}
+
+const handleNotificationClose = () => {
+  notification.value.visible = false
+}
+
+// Initialize on mount
+onMounted(async () => {
+  await navigateToRoot()
+})
+</script>
+
+<template>
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Sidebar -->
+    <Sidebar 
+      :current-view="currentView"
+      @view-change="handleViewChange"
+      @navigate-root="navigateToRoot"
+    />
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col">
+      <!-- Top Toolbar -->
+      <Toolbar 
+        :search-query="searchQuery"
+        :view-mode="viewMode"
+        :user="user"
+        @search-change="handleSearchChange"
+        @view-mode-change="handleViewModeChange"
+        @logout="handleLogout"
+      />
+
+      <!-- Breadcrumb -->
+      <Breadcrumb 
+        :breadcrumbs="breadcrumbs"
+        @navigate-breadcrumb="navigateToBreadcrumb"
+      />
+
+      <!-- Content Area -->
+      <div class="flex-1 flex flex-col">
+        <!-- Content Area -->
+        <ContentArea 
+          :items="filteredItems"
+          :selected-items="selectedItems"
+          :view-mode="viewMode"
+          :loading="loading"
+          :error="error"
+          :search-query="searchQuery"
+          @item-select="handleItemSelect"
+          @item-double-click="handleItemDoubleClick"
+          @item-star-toggle="handleItemStarToggle"
+          @context-menu="handleContextMenu"
+          @retry="handleRetry"
+        />
+      </div>
+    </div>
+    
+    <!-- Context Menu -->
+    <ContextMenu
+      :visible="contextMenu.visible"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      :item="contextMenu.item"
+      @close="handleContextMenuClose"
+      @action="handleContextMenuAction"
+    />
+    
+    <!-- Confirmation Modal -->
+    <ConfirmModal
+      :visible="confirmModal.visible"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :danger="true"
+      @confirm="handleConfirmAction"
+      @cancel="handleConfirmCancel"
+      @close="handleConfirmClose"
+    />
+    
+    <!-- Notification -->
+    <Notification
+      :visible="notification.visible"
+      :type="notification.type"
+      :title="notification.title"
+      :message="notification.message"
+      @close="handleNotificationClose"
+    />
+  </div>
+</template>
+
+<style scoped>
+/* Close dropdowns when clicking outside */
+</style> 

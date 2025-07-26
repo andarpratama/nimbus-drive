@@ -1,30 +1,116 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const user = ref(null)
+const loading = ref(true)
+
+// Use the correct API URL for Docker environment
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+
+const isAuthenticated = computed(() => {
+  return localStorage.getItem('token') !== null
+})
+
+const handleLoginSuccess = (userData) => {
+  user.value = userData
+  router.push('/dashboard')
+}
+
+const logout = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    // No token to logout, just clear local state
+    user.value = null
+    router.push('/login')
+    return
+  }
+
+  try {
+    // Call logout API
+    const response = await fetch(`${API_BASE_URL}/api/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (response.ok) {
+      console.log('Logout successful')
+    } else {
+      console.warn('Logout API call failed, but clearing local state')
+    }
+  } catch (error) {
+    console.error('Logout error:', error)
+  } finally {
+    // Always clear local state regardless of API response
+    localStorage.removeItem('token')
+    user.value = null
+    router.push('/login')
+  }
+}
+
+// Check authentication on mount
+const checkAuth = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    router.push('/login')
+    loading.value = false
+    return
+  }
+  
+  try {
+    // Fetch user data
+    const response = await fetch(`${API_BASE_URL}/api/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    if (response.ok) {
+      user.value = await response.json()
+      if (router.currentRoute.value.path === '/login' || router.currentRoute.value.path === '/register') {
+        router.push('/dashboard')
+      }
+    } else {
+      // Token invalid, redirect to login
+      localStorage.removeItem('token')
+      router.push('/login')
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error)
+    localStorage.removeItem('token')
+    router.push('/login')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  checkAuth()
+})
+
+// Listen for storage changes (login/logout)
+window.addEventListener('storage', checkAuth)
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <!-- Page Content -->
+    <main>
+      <router-view :user="user" @login-success="handleLoginSuccess" @logout="logout" />
+    </main>
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
 <style scoped>
 .logo {
-  height: 6em;
-  padding: 1.5em;
   will-change: filter;
   transition: filter 300ms;
 }
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
 }
 </style>
