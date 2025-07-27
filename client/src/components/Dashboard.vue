@@ -12,6 +12,7 @@ import Breadcrumb from './dashboard/Breadcrumb.vue'
 import PreviewModal from './dashboard/PreviewModal.vue'
 import NewFolderModal from './dashboard/NewFolderModal.vue'
 import RenameModal from './dashboard/RenameModal.vue'
+import MoveModal from './dashboard/MoveModal.vue'
 import { useFileManager } from '../composables/useFileManager'
 
 // Props to receive user data from parent
@@ -116,6 +117,12 @@ const previewModal = ref({
 
 // Rename modal state
 const renameModal = ref({
+  visible: false,
+  item: null
+})
+
+// Move modal state
+const moveModal = ref({
   visible: false,
   item: null
 })
@@ -242,7 +249,7 @@ const handleContextMenuAction = (data) => {
       openPreview(item)
       break
     case 'move':
-      console.log('Move item:', item.name)
+      openMoveModal(item)
       break
     case 'copy':
       console.log('Copy item:', item.name)
@@ -568,6 +575,34 @@ const closePreview = () => {
   previewModal.value.file = null
 }
 
+const openMoveModal = (item) => {
+  moveModal.value = {
+    visible: true,
+    item: item
+  }
+}
+
+const handleMoveSuccess = async (result) => {
+  // Show success notification
+  notification.value = {
+    visible: true,
+    type: 'success',
+    title: 'Success',
+    message: `${moveModal.value.item.type === 'folder' ? 'Folder' : 'File'} "${moveModal.value.item.name}" has been moved successfully.`
+  }
+  
+  // Refresh the current folder contents
+  await fetchFolderContents(currentFolderId.value)
+  
+  // Clear selection
+  clearSelection()
+}
+
+const handleMoveModalClose = () => {
+  moveModal.value.visible = false
+  moveModal.value.item = null
+}
+
 // Handle browser back/forward buttons
 const handlePopState = () => {
   initializeViewFromURL()
@@ -706,6 +741,14 @@ onMounted(async () => {
       :item="renameModal.item"
       @close="handleRenameClose"
       @rename-success="handleRenameSuccess"
+    />
+    
+    <!-- Move Modal -->
+    <MoveModal
+      :visible="moveModal.visible"
+      :item="moveModal.item"
+      @close="handleMoveModalClose"
+      @move="handleMoveSuccess"
     />
   </div>
 </template>

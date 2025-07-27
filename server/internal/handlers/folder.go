@@ -408,3 +408,125 @@ func RenameFolder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "folder renamed successfully", "folder": folder})
 } 
+
+// MoveFolder handles PATCH /folders/:id/move to move a folder to a different location
+func MoveFolder(c *gin.Context) {
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+	folderID := c.Param("id")
+
+	var input struct {
+		NewParentID *uuid.UUID `json:"new_parent_id"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if folder exists and belongs to user
+	var folder models.Folder
+	if err := database.DB.Where("id = ? AND user_id = ?", folderID, userID).First(&folder).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+		return
+	}
+
+	// Prevent moving folder to itself (circular reference)
+	if input.NewParentID != nil && input.NewParentID.String() == folder.ID.String() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "folder cannot be moved to itself"})
+		return
+	}
+
+	// If new parent is provided, verify it exists and belongs to the user
+	if input.NewParentID != nil {
+		var newParentFolder models.Folder
+		if err := database.DB.Where("id = ? AND user_id = ?", *input.NewParentID, userID).First(&newParentFolder).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "destination folder not found"})
+			return
+		}
+
+		// Check if moving would create a circular reference
+		// (moving a folder into one of its own subfolders)
+		if isDescendant(folder.ID, *input.NewParentID, userID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot move folder into its own subfolder"})
+			return
+		}
+	}
+
+	// Check for duplicate folder name in the destination
+	var existingFolder models.Folder
+	query := database.DB.Where("user_id = ? AND name = ? AND id != ?", userID, folder.Name, folderID)
+	
+	if input.NewParentID != nil {
+		// Check in specific parent folder
+		query = query.Where("parent_id = ?", *input.NewParentID)
+	} else {
+		// Check in root folder (parent_id is NULL)
+		query = query.Where("parent_id IS NULL")
+	}
+	
+	if err := query.First(&existingFolder).Error; err == nil {
+		// Folder with same name already exists in destination
+		c.JSON(http.StatusConflict, gin.H{"error": "a folder with this name already exists in the destination"})
+		return
+	}
+
+	// Update the folder's parent and UpdatedAt timestamp
+	folder.ParentID = input.NewParentID
+	folder.UpdatedAt = time.Now()
+
+	if err := database.DB.Save(&folder).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to move folder"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "folder moved successfully", "folder": folder})
+}
+
+// isDescendant checks if targetID is a descendant of ancestorID
+func isDescendant(ancestorID, targetID uuid.UUID, userID uuid.UUID) bool {
+	var folders []models.Folder
+	if err := database.DB.Where("user_id = ?", userID).Find(&folders).Error; err != nil {
+		return false
+	}
+
+	// Build a map of parent-child relationships
+	childrenMap := make(map[uuid.UUID][]uuid.UUID)
+	for _, folder := range folders {
+		if folder.ParentID != nil {
+			childrenMap[*folder.ParentID] = append(childrenMap[*folder.ParentID], folder.ID)
+		}
+	}
+
+	// Use BFS to check if targetID is reachable from ancestorID
+	visited := make(map[uuid.UUID]bool)
+	queue := []uuid.UUID{ancestorID}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if visited[current] {
+			continue
+		}
+		visited[current] = true
+
+		// Check if we found the target
+		if current == targetID {
+			return true
+		}
+
+		// Add children to queue
+		for _, child := range childrenMap[current] {
+			if !visited[child] {
+				queue = append(queue, child)
+			}
+		}
+	}
+
+	return false
+} 

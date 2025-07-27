@@ -187,7 +187,8 @@ const getMenuItems = () => {
   const commonItems = [
     { id: 'rename', label: 'Rename', icon: '✏️' },
     { id: 'star', label: props.item.starred ? 'Remove star' : 'Add star', icon: props.item.starred ? '⭐' : '☆' },
-    { id: 'share', label: 'Share', icon: '👥' }
+    { id: 'share', label: 'Share', icon: '👥' },
+    { id: 'move', label: 'Move to...', icon: '📁' }
   ]
   
   const folderItems = [
@@ -206,7 +207,6 @@ const getMenuItems = () => {
   }
   
   fileItems.push(
-    { id: 'move', label: 'Move to...', icon: '📁' },
     { id: 'copy', label: 'Copy', icon: '📋' }
   )
   
