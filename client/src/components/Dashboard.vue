@@ -11,6 +11,7 @@ import UploadModal from './dashboard/UploadModal.vue'
 import Breadcrumb from './dashboard/Breadcrumb.vue'
 import PreviewModal from './dashboard/PreviewModal.vue'
 import NewFolderModal from './dashboard/NewFolderModal.vue'
+import RenameModal from './dashboard/RenameModal.vue'
 import { useFileManager } from '../composables/useFileManager'
 
 // Props to receive user data from parent
@@ -113,6 +114,12 @@ const previewModal = ref({
   file: null
 })
 
+// Rename modal state
+const renameModal = ref({
+  visible: false,
+  item: null
+})
+
 // Filtered items based on search
 const filteredItems = computed(() => {
   if (!searchQuery.value) return allItems.value
@@ -202,7 +209,7 @@ const handleContextMenuAction = (data) => {
   // Handle different actions
   switch (action) {
     case 'rename':
-      console.log('Rename item:', item.name)
+      openRenameModal(item)
       break
     case 'delete':
       showDeleteConfirmation(item)
@@ -488,6 +495,53 @@ const openPreview = (item) => {
   }
 }
 
+const openRenameModal = (item) => {
+  renameModal.value = {
+    visible: true,
+    item: item
+  }
+}
+
+const handleRenameSuccess = (updatedItem) => {
+  console.log('Rename success handler called with:', updatedItem)
+  console.log('Current folders:', folders.value)
+  console.log('Current files:', files.value)
+  
+  // Update the files/folders arrays based on type
+  if (updatedItem.type === 'folder') {
+    const folderIndex = folders.value.findIndex(f => f.ID === updatedItem.folderId)
+    console.log('Folder index found:', folderIndex)
+    if (folderIndex !== -1) {
+      folders.value[folderIndex] = { ...folders.value[folderIndex], Name: updatedItem.name }
+      console.log('Folder updated:', folders.value[folderIndex])
+    }
+  } else {
+    const fileIndex = files.value.findIndex(f => f.ID === updatedItem.fileId)
+    console.log('File index found:', fileIndex)
+    if (fileIndex !== -1) {
+      files.value[fileIndex] = { ...files.value[fileIndex], Name: updatedItem.name }
+      console.log('File updated:', files.value[fileIndex])
+    }
+  }
+  
+  // Show success notification
+  showNotification('success', 'Item Renamed', `"${updatedItem.name}" has been renamed successfully.`)
+}
+
+const handleRenameClose = () => {
+  renameModal.value.visible = false
+  renameModal.value.item = null
+}
+
+const showNotification = (type, title, message) => {
+  notification.value = {
+    visible: true,
+    type: type,
+    title: title,
+    message: message
+  }
+}
+
 const openNewFolderModal = () => {
   newFolderModal.value.visible = true
 }
@@ -644,6 +698,14 @@ onMounted(async () => {
       :current-folder="currentFolder"
       @close="handleNewFolderModalClose"
       @folder-created="handleFolderCreated"
+    />
+    
+    <!-- Rename Modal -->
+    <RenameModal
+      :visible="renameModal.visible"
+      :item="renameModal.item"
+      @close="handleRenameClose"
+      @rename-success="handleRenameSuccess"
     />
   </div>
 </template>

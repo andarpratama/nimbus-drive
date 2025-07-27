@@ -16,6 +16,7 @@ func RegisterFileRoutes(files *gin.RouterGroup) {
 	protected.GET("", handlers.ListFiles)
 	protected.GET("/trash", handlers.GetTrashedFiles)
 	protected.PUT("/:id/move", handlers.MoveFile)
+	protected.PATCH("/:id/rename", handlers.RenameFile)
 	protected.POST("/:id/restore", handlers.RestoreFile)
 	protected.DELETE("/:id/permanent", handlers.PermanentlyDeleteFile)
 

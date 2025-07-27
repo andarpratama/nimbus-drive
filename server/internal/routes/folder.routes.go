@@ -16,5 +16,6 @@ func RegisterFolderRoutes(folders *gin.RouterGroup) {
 	protected.GET("/:id", handlers.GetFolderByID)
 	protected.GET("/:id/contents", handlers.GetFolderContents)
 	protected.PUT("/:id", handlers.UpdateFolder)
+	protected.PATCH("/:id/rename", handlers.RenameFolder)
 	protected.DELETE("/:id", handlers.DeleteFolder)
 } 

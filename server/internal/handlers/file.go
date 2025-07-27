@@ -277,3 +277,108 @@ func PermanentlyDeleteFile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "file permanently deleted"})
 }
+
+func RenameFile(c *gin.Context) {
+	userID := c.GetUint("userID")
+	fileID := c.Param("id")
+
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	// Clean the filename (remove whitespace)
+	cleanName := ""
+	for _, r := range input.Name {
+		if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
+			cleanName += string(r)
+		}
+	}
+
+	if cleanName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name cannot be empty"})
+		return
+	}
+
+	var file models.File
+	if err := database.DB.
+		Where("id = ? AND user_id = ?", fileID, userID).
+		First(&file).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	// Check if file with same name already exists in the same folder
+	var existingFile models.File
+	query := database.DB.Where("name = ? AND user_id = ? AND id != ?", cleanName, userID, fileID)
+	if file.FolderID != nil {
+		query = query.Where("folder_id = ?", file.FolderID)
+	} else {
+		query = query.Where("folder_id IS NULL")
+	}
+	
+	if err := query.First(&existingFile).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "file with this name already exists"})
+		return
+	}
+
+	// Get the file extension from the original path
+	oldExt := filepath.Ext(file.Path)
+	newExt := filepath.Ext(cleanName)
+	
+	// If the extension changed, use the new extension, otherwise keep the old one
+	finalExt := oldExt
+	if newExt != "" {
+		finalExt = newExt
+	}
+	
+	// Create new filename with proper extension
+	newFilename := cleanName
+	if !strings.HasSuffix(newFilename, finalExt) {
+		newFilename = newFilename + finalExt
+	}
+	
+	// Validate that the new filename is not empty after extension handling
+	if newFilename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid filename"})
+		return
+	}
+	
+	// Create new path by replacing the filename in the old path
+	oldDir := filepath.Dir(file.Path)
+	newPath := filepath.Join(oldDir, newFilename)
+	
+	// Check if the new path already exists on disk
+	if _, err := os.Stat(newPath); err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "file with this name already exists on disk"})
+		return
+	}
+	
+	// Rename the physical file on disk
+	log.Printf("Renaming file from %s to %s", file.Path, newPath)
+	if err := os.Rename(file.Path, newPath); err != nil {
+		log.Printf("Failed to rename physical file from %s to %s: %v", file.Path, newPath, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to rename file on disk"})
+		return
+	}
+	
+	// Update the file name, path and UpdatedAt timestamp
+	file.Name = newFilename
+	file.Path = newPath
+	file.UpdatedAt = time.Now()
+
+	if err := database.DB.Save(&file).Error; err != nil {
+		// If database update fails, try to revert the file rename
+		if revertErr := os.Rename(newPath, file.Path); revertErr != nil {
+			log.Printf("Failed to revert file rename: %v", revertErr)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to rename file"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "file renamed successfully", "file": file})
+}
