@@ -1,5 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import ThemeToggle from '../ThemeToggle.vue'
+import { useDropdownManager } from '../../composables/useDropdownManager'
 
 const props = defineProps({
   searchQuery: {
@@ -26,9 +28,15 @@ const emit = defineEmits([
   'new-folder'
 ])
 
-const showCreateMenu = ref(false)
-const showUploadMenu = ref(false)
-const showUserMenu = ref(false)
+// Use dropdown manager
+const { openDropdown, closeAllDropdowns, isDropdownOpen } = useDropdownManager()
+
+// Dropdown IDs
+const DROPDOWN_IDS = {
+  CREATE: 'create-menu',
+  UPLOAD: 'upload-menu',
+  USER: 'user-menu'
+}
 
 const handleSearchChange = (event) => {
   emit('search-change', event.target.value)
@@ -41,34 +49,33 @@ const handleViewModeChange = (mode) => {
 
 
 const handleLogout = () => {
+  closeAllDropdowns()
   emit('logout')
 }
 
 const toggleCreateMenu = () => {
-  showCreateMenu.value = !showCreateMenu.value
-  emit('create-menu-toggle', showCreateMenu.value)
+  const isOpen = openDropdown(DROPDOWN_IDS.CREATE)
+  emit('create-menu-toggle', isOpen)
 }
 
 const handleNewFolder = () => {
-  showCreateMenu.value = false
+  closeAllDropdowns()
   emit('new-folder')
 }
 
 const toggleUploadMenu = () => {
-  showUploadMenu.value = !showUploadMenu.value
-  emit('upload-menu-toggle', showUploadMenu.value)
+  const isOpen = openDropdown(DROPDOWN_IDS.UPLOAD)
+  emit('upload-menu-toggle', isOpen)
 }
 
 const toggleUserMenu = () => {
-  showUserMenu.value = !showUserMenu.value
+  openDropdown(DROPDOWN_IDS.USER)
 }
 
 // Close dropdowns when clicking outside
 const handleClickOutside = (event) => {
   if (!event.target.closest('.dropdown-container')) {
-    showCreateMenu.value = false
-    showUploadMenu.value = false
-    showUserMenu.value = false
+    closeAllDropdowns()
   }
 }
 
@@ -103,11 +110,11 @@ onUnmounted(() => {
       <!-- Right side: Actions -->
       <div class="flex items-center space-x-2">
         <!-- View toggle -->
-        <div class="flex border border-gray-300 dark:border-gray-600 rounded-lg">
+        <div class="flex border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
           <button
             @click="handleViewModeChange('grid')"
             :class="[
-              'px-3 py-2 text-sm transition-colors',
+              'px-3 py-2 text-sm transition-colors rounded-l-lg',
               viewMode === 'grid' 
                 ? 'bg-blue-600 text-white' 
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -118,7 +125,7 @@ onUnmounted(() => {
           <button
             @click="handleViewModeChange('list')"
             :class="[
-              'px-3 py-2 text-sm transition-colors',
+              'px-3 py-2 text-sm transition-colors rounded-r-lg',
               viewMode === 'list' 
                 ? 'bg-blue-600 text-white' 
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -127,6 +134,9 @@ onUnmounted(() => {
             ☰
           </button>
         </div>
+        
+        <!-- Theme toggle -->
+        <ThemeToggle />
         
         <!-- Create button -->
         <div class="relative dropdown-container">
@@ -138,7 +148,7 @@ onUnmounted(() => {
           </button>
           
           <!-- Create dropdown -->
-          <div v-if="showCreateMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+          <div v-if="isDropdownOpen(DROPDOWN_IDS.CREATE)" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
               <button 
                 @click="handleNewFolder"
@@ -169,10 +179,10 @@ onUnmounted(() => {
           </button>
           
           <!-- Upload dropdown -->
-          <div v-if="showUploadMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+          <div v-if="isDropdownOpen(DROPDOWN_IDS.UPLOAD)" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
               <button 
-                @click="() => { emit('upload-files'); showUploadMenu = false; }"
+                @click="() => { emit('upload-files'); closeAllDropdowns(); }"
                 class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 📁 Upload files
@@ -190,15 +200,15 @@ onUnmounted(() => {
             @click="toggleUserMenu"
             class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
+            <span class="hidden sm:block capitalize">{{ user.name }}</span>
             <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
               {{ user.name ? user.name.charAt(0).toUpperCase() : 'U' }}
             </div>
-            <span class="hidden sm:block">{{ user.name }}</span>
-            <span>▼</span>
+            <!-- <span>▼</span> -->
           </button>
           
           <!-- User dropdown -->
-          <div v-if="showUserMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+          <div v-if="isDropdownOpen(DROPDOWN_IDS.USER)" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
               <div class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                 {{ user.email }}

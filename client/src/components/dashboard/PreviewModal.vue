@@ -74,17 +74,17 @@ const handleKeydown = (event) => {
       <!-- Content -->
       <div class="flex-1 overflow-auto">
         <!-- Image Preview -->
-        <div v-if="isImage" class="flex justify-center items-center p-6">
+        <div v-if="isImage" class="flex justify-center items-center p-4 h-[70vh]">
           <img
             :src="imageUrl"
             :alt="file?.name"
-            class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+            class="max-w-full max-h-full object-contain rounded-lg shadow-lg"
             @error="$event.target.style.display = 'none'"
           />
         </div>
 
         <!-- Unsupported File Type -->
-        <div v-else class="flex justify-center items-center py-20">
+        <div v-else class="flex justify-center items-center py-12">
           <div class="text-center">
             <div class="text-6xl mb-4">📄</div>
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">

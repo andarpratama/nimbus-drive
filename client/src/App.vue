@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDropdownManager } from './composables/useDropdownManager'
 
 const router = useRouter()
 const user = ref(null)
@@ -88,8 +89,18 @@ const checkAuth = async () => {
   }
 }
 
+// Initialize dropdown manager
+const { closeAllDropdowns } = useDropdownManager()
+
 onMounted(() => {
   checkAuth()
+  
+  // Global click handler to close dropdowns when clicking outside
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.dropdown-container')) {
+      closeAllDropdowns()
+    }
+  })
 })
 
 // Listen for storage changes (login/logout)

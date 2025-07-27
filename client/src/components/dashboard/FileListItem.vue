@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import FileIcon from '../FileIcon.vue'
 
 const props = defineProps({
   item: {
@@ -13,44 +14,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select', 'double-click', 'star-toggle', 'context-menu'])
-
-const getFileIcon = (type) => {
-  const icons = {
-    // Documents
-    document: '📄',
-    pdf: '📕',
-    text: '📝',
-    
-    // Spreadsheets
-    spreadsheet: '📊',
-    
-    // Presentations
-    presentation: '📋',
-    
-    // Images
-    image: '🖼️',
-    
-    // Media
-    video: '🎥',
-    audio: '🎵',
-    
-    // Archives
-    archive: '📦',
-    
-    // Code
-    code: '💻',
-    
-    // Data
-    data: '📊',
-    
-    // Executables
-    executable: '⚙️',
-    
-    // Folders
-    folder: '📁'
-  }
-  return icons[type] || '📄'
-}
 
 // Check if file is an image
 const isImage = computed(() => {
@@ -127,7 +90,10 @@ const handleMoreOptionsClick = (event) => {
         @error="$event.target.style.display = 'none'"
       />
       <!-- File icon for non-images -->
-      <div v-else class="text-2xl">{{ getFileIcon(item.type) }}</div>
+      <div v-else>
+        <FileIcon v-if="item.type !== 'folder'" :filename="item.name" size="md" />
+        <div v-else class="text-2xl">📁</div>
+      </div>
     </div>
     
     <!-- File info -->

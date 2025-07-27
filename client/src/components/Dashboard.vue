@@ -57,6 +57,9 @@ const searchQuery = ref('')
 // Ref for TrashView component
 const trashViewRef = ref(null)
 
+// Ref for UploadModal component
+const uploadModalRef = ref(null)
+
 // Initialize view from URL on mount
 const initializeViewFromURL = () => {
   const urlParams = new URLSearchParams(window.location.search)
@@ -451,6 +454,10 @@ const handleUploadFiles = () => {
 
 const handleUploadClose = () => {
   uploadModal.value.visible = false
+  // Reset the upload modal form
+  if (uploadModalRef.value) {
+    uploadModalRef.value.resetForm()
+  }
 }
 
 const handleUploadComplete = async () => {
@@ -617,6 +624,7 @@ onMounted(async () => {
     
     <!-- Upload Modal -->
     <UploadModal
+      ref="uploadModalRef"
       :visible="uploadModal.visible"
       :current-folder-id="currentFolderId"
       @close="handleUploadClose"

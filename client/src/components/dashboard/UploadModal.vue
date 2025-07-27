@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import FileIcon from '../FileIcon.vue'
 
 const props = defineProps({
   visible: {
@@ -124,48 +125,34 @@ const uploadFiles = async () => {
         formData.append('folder_id', props.currentFolderId.toString())
       }
       
-      const xhr = new XMLHttpRequest()
-      
-      // Track upload progress
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const progress = Math.round((e.loaded / e.total) * 100)
-          uploadProgress.value[file.name] = progress
-        }
+      // Use fetch instead of XMLHttpRequest for better async handling
+      const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
       })
       
-      // Handle response
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          uploadProgress.value[file.name] = 100
-        } else {
-          error.value = `Failed to upload "${file.name}": ${xhr.statusText}`
-        }
-      })
-      
-      xhr.addEventListener('error', () => {
-        error.value = `Failed to upload "${file.name}": Network error`
-      })
-      
-      // Send request
-      xhr.open('POST', `${API_BASE_URL}/api/files/upload`)
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-      xhr.send(formData)
-      
-      // Wait for upload to complete
-      await new Promise((resolve, reject) => {
-        xhr.addEventListener('load', resolve)
-        xhr.addEventListener('error', reject)
-      })
+      if (response.ok) {
+        uploadProgress.value[file.name] = 100
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        error.value = `Failed to upload "${file.name}": ${errorData.error || response.statusText}`
+        throw new Error(`Upload failed for ${file.name}`)
+      }
     }
     
-    // All uploads completed
+    // All uploads completed successfully
     emit('upload-complete')
+    clearFiles() // Clear files immediately after successful upload
     emit('close')
     
   } catch (err) {
     console.error('Upload error:', err)
-    error.value = 'Upload failed. Please try again.'
+    if (!error.value) {
+      error.value = 'Upload failed. Please try again.'
+    }
   } finally {
     uploading.value = false
   }
@@ -178,6 +165,18 @@ const handleClose = () => {
     emit('close')
   }
 }
+
+// Expose reset function to parent
+const resetForm = () => {
+  clearFiles()
+  uploading.value = false
+  error.value = ''
+}
+
+// Expose reset function
+defineExpose({
+  resetForm
+})
 
 // Handle escape key
 const handleKeydown = (event) => {
@@ -194,6 +193,8 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
+
+
 
 // Format file size
 const formatFileSize = (bytes) => {
@@ -283,7 +284,9 @@ const formatFileSize = (bytes) => {
               class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
             >
               <div class="flex items-center flex-1 min-w-0">
-                <span class="text-lg mr-3">📄</span>
+                <div class="mr-3">
+                  <FileIcon :filename="file.name" size="md" />
+                </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {{ file.name }}
