@@ -2,26 +2,26 @@ import { Ref } from 'vue'
 
 // Core data types
 export interface File {
-  ID: number
+  ID: string
   Name: string
   Size: number
   UpdatedAt: string
   updated_at?: string  // GORM might return this as snake_case
-  UserID: number
-  user_id?: number     // GORM might return this as snake_case
-  FolderID?: number
-  folder_id?: number   // GORM might return this as snake_case
+  UserID: string
+  user_id?: string     // GORM might return this as snake_case
+  FolderID?: string
+  folder_id?: string   // GORM might return this as snake_case
   Path: string
   deleted_at?: string
 }
 
 export interface Folder {
-  ID: number
+  ID: string
   Name: string
-  ParentID?: number
-  parent_id?: number  // GORM might return this as snake_case
-  UserID: number
-  user_id?: number    // GORM might return this as snake_case
+  ParentID?: string
+  parent_id?: string  // GORM might return this as snake_case
+  UserID: string
+  user_id?: string    // GORM might return this as snake_case
   UpdatedAt: string
   updated_at?: string  // GORM might return this as snake_case
   file_count?: number
@@ -31,7 +31,7 @@ export interface Folder {
 }
 
 export interface Breadcrumb {
-  id: number | null
+  id: string | null
   name: string
 }
 
@@ -43,8 +43,8 @@ export interface FileItem {
   modified: string
   starred: boolean
   shared: boolean
-  folderId?: number
-  fileId?: number
+  folderId?: string
+  fileId?: string
   itemCount?: number
   fileCount?: number
   subfolderCount?: number
@@ -69,7 +69,7 @@ export interface FolderResponse {
 export interface FileManagerState {
   files: Ref<File[]>
   folders: Ref<Folder[]>
-  currentFolderId: Ref<number | null>
+  currentFolderId: Ref<string | null>
   currentFolder: Ref<Folder | null>
   breadcrumbs: Ref<Breadcrumb[]>
   loading: Ref<boolean>

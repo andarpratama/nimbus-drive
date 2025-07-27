@@ -7,13 +7,13 @@ export function useFileData() {
   // State
   const files = ref<File[]>([])
   const folders = ref<Folder[]>([])
-  const currentFolderId = ref<number | null>(null)
+  const currentFolderId = ref<string | null>(null)
   const currentFolder = ref<Folder | null>(null)
   const loading = ref(false)
   const error = ref('')
 
   // Fetch folder contents
-  const fetchFolderContents = async (folderId: number | null = null) => {
+  const fetchFolderContents = async (folderId: string | null = null) => {
     loading.value = true
     error.value = ''
     

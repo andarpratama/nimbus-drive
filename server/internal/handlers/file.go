@@ -6,17 +6,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/andarpratama/nimbus-drive/internal/database"
 	"github.com/andarpratama/nimbus-drive/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func UploadFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	log.Println("userID", userID)
 
 	file, err := c.FormFile("file")
@@ -27,11 +32,10 @@ func UploadFile(c *gin.Context) {
 
 	// Get folder_id from form data (optional)
 	folderIDStr := c.PostForm("folder_id")
-	var folderID *uint
+	var folderID *uuid.UUID
 	if folderIDStr != "" {
-		if id, err := strconv.ParseUint(folderIDStr, 10, 32); err == nil {
-			uintID := uint(id)
-			folderID = &uintID
+		if id, err := uuid.Parse(folderIDStr); err == nil {
+			folderID = &id
 			
 			// Verify folder exists and belongs to user
 			var folder models.Folder
@@ -81,7 +85,12 @@ func UploadFile(c *gin.Context) {
 }
 
 func DownloadFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	fileID := c.Param("id")
 
 	var file models.File
@@ -130,7 +139,12 @@ func ServeImage(c *gin.Context) {
 }
 
 func ListFiles(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	folderID := c.Query("folder_id")
 
 	var files []models.File
@@ -138,7 +152,7 @@ func ListFiles(c *gin.Context) {
 
 	// If folder_id is provided, filter by folder
 	if folderID != "" {
-		if id, err := strconv.ParseUint(folderID, 10, 32); err == nil {
+		if id, err := uuid.Parse(folderID); err == nil {
 			query = query.Where("folder_id = ?", id)
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid folder_id"})
@@ -158,7 +172,12 @@ func ListFiles(c *gin.Context) {
 }
 
 func DeleteFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	fileID := c.Param("id")
 
 	var file models.File
@@ -179,7 +198,12 @@ func DeleteFile(c *gin.Context) {
 }
 
 func GetTrashedFiles(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 
 	var trashed []models.File
 	if err := database.DB.Unscoped(). // include soft-deleted
@@ -193,11 +217,16 @@ func GetTrashedFiles(c *gin.Context) {
 }
 
 func MoveFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	fileID := c.Param("id")
 
 	var input struct {
-		FolderID *uint `json:"folder_id"`
+		FolderID *uuid.UUID `json:"folder_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -234,7 +263,12 @@ func MoveFile(c *gin.Context) {
 
 // RestoreFile handles POST /files/:id/restore to restore a soft-deleted file
 func RestoreFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	fileID := c.Param("id")
 
 	var file models.File
@@ -254,7 +288,12 @@ func RestoreFile(c *gin.Context) {
 
 // PermanentlyDeleteFile handles DELETE /files/:id/permanent to permanently delete a file
 func PermanentlyDeleteFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	fileID := c.Param("id")
 
 	var file models.File
@@ -279,7 +318,12 @@ func PermanentlyDeleteFile(c *gin.Context) {
 }
 
 func RenameFile(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	fileID := c.Param("id")
 
 	var input struct {

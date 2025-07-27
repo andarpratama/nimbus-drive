@@ -7,15 +7,21 @@ import (
 	"github.com/andarpratama/nimbus-drive/internal/database"
 	"github.com/andarpratama/nimbus-drive/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // CreateFolder handles POST /folders to create a new folder
 func CreateFolder(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 
 	var input struct {
-		Name     string `json:"name" binding:"required"`
-		ParentID *uint  `json:"parent_id"`
+		Name     string      `json:"name" binding:"required"`
+		ParentID *uuid.UUID `json:"parent_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -66,7 +72,12 @@ func CreateFolder(c *gin.Context) {
 
 // GetFolders handles GET /folders to fetch all folders for a user
 func GetFolders(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 
 	var folders []models.Folder
 	if err := database.DB.
@@ -111,7 +122,12 @@ func GetFolders(c *gin.Context) {
 
 // GetFolderByID handles GET /folders/:id to fetch a single folder
 func GetFolderByID(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	folderID := c.Param("id")
 
 	var folder models.Folder
@@ -129,12 +145,17 @@ func GetFolderByID(c *gin.Context) {
 
 // UpdateFolder handles PUT /folders/:id to update a folder
 func UpdateFolder(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	folderID := c.Param("id")
 
 	var input struct {
-		Name     string `json:"name" binding:"required"`
-		ParentID *uint  `json:"parent_id"`
+		Name     string      `json:"name" binding:"required"`
+		ParentID *uuid.UUID `json:"parent_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -152,7 +173,7 @@ func UpdateFolder(c *gin.Context) {
 	// If parent_id is provided, verify it exists and belongs to the user
 	if input.ParentID != nil {
 		// Prevent circular reference - folder cannot be its own parent
-		if *input.ParentID == folder.ID {
+		if input.ParentID.String() == folder.ID.String() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "folder cannot be its own parent"})
 			return
 		}
@@ -196,7 +217,12 @@ func UpdateFolder(c *gin.Context) {
 
 // DeleteFolder handles DELETE /folders/:id to delete a folder
 func DeleteFolder(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	folderID := c.Param("id")
 
 	// Check if folder exists and belongs to user
@@ -241,7 +267,12 @@ func DeleteFolder(c *gin.Context) {
 
 // GetFolderTree handles GET /folders/tree to get folder hierarchy
 func GetFolderTree(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 
 	var folders []models.Folder
 	if err := database.DB.
@@ -255,7 +286,7 @@ func GetFolderTree(c *gin.Context) {
 	}
 
 	// Build folder tree structure
-	folderMap := make(map[uint]*models.Folder)
+	folderMap := make(map[uuid.UUID]*models.Folder)
 	var rootFolders []*models.Folder
 
 	for i := range folders {
@@ -273,7 +304,12 @@ func GetFolderTree(c *gin.Context) {
 
 // GetFolderContents handles GET /folders/:id/contents to get folder contents
 func GetFolderContents(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	folderID := c.Param("id")
 
 	// Verify folder exists and belongs to user
@@ -306,7 +342,12 @@ func GetFolderContents(c *gin.Context) {
 
 // RenameFolder handles PATCH /folders/:id/rename to rename a folder
 func RenameFolder(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	folderID := c.Param("id")
 
 	var input struct {

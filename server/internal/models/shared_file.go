@@ -1,11 +1,20 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type SharedFile struct {
-	gorm.Model
-	FileID          uint
-	SharedWithEmail string `gorm:"type:varchar(255)"`
-	Token           string `gorm:"type:varchar(255);uniqueIndex"`
+	ID              uuid.UUID `gorm:"type:char(36);primaryKey;default:gen_random_uuid()"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       gorm.DeletedAt `gorm:"index"`
+
+	FileID          uuid.UUID `gorm:"type:char(36);not null"`
+	SharedWithEmail string    `gorm:"type:varchar(255)"`
+	Token           string    `gorm:"type:varchar(255);uniqueIndex"`
 	ExpiredAt       *int64
 }

@@ -11,12 +11,12 @@ export function useFileManager() {
   const selection = useSelection()
 
   // Navigation methods
-  const navigateToFolder = async (folderId: number) => {
+  const navigateToFolder = async (folderId: string) => {
     await fileData.fetchFolderContents(folderId)
     await breadcrumbs.updateBreadcrumbs(fileData.currentFolder.value)
   }
 
-  const navigateToBreadcrumb = async (folderId: number | null) => {
+  const navigateToBreadcrumb = async (folderId: string | null) => {
     await fileData.fetchFolderContents(folderId)
     await breadcrumbs.updateBreadcrumbs(fileData.currentFolder.value)
   }

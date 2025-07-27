@@ -8,7 +8,7 @@ const props = defineProps({
     default: false
   },
   currentFolderId: {
-    type: [Number, null],
+    type: [String, null],
     default: null
   }
 })

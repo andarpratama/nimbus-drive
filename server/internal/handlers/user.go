@@ -2,16 +2,21 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/andarpratama/nimbus-drive/internal/database"
 	"github.com/andarpratama/nimbus-drive/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // GetCurrentUser handles GET /user to fetch current authenticated user
 func GetCurrentUser(c *gin.Context) {
-	userID := c.GetUint("userID")
+	userIDStr := c.GetString("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
 	
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
@@ -41,7 +46,7 @@ func GetAllUsers(c *gin.Context) {
 // GetUserByID handles GET /users/:id to fetch a single user by ID
 func GetUserByID(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := uuid.Parse(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
