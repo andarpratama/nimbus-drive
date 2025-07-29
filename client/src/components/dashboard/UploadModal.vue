@@ -243,22 +243,22 @@ const formatFileSize = (bytes) => {
           @dragover="handleDrag"
           @drop="handleDrop"
           :class="[
-            'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+            'border-2 border-dashed rounded-lg p-4 text-center transition-colors',
             dragActive
               ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
               : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
           ]"
         >
-          <div class="text-6xl mb-4">📁</div>
-          <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <div class="text-3xl mb-2">📁</div>
+          <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-1">
             Drop files here or click to select
           </h4>
-          <p class="text-gray-600 dark:text-gray-400 mb-4">
+          <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
             Maximum file size: 100MB
           </p>
           <button
             @click="fileInputRef?.click()"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
             Choose Files
           </button>

@@ -16,34 +16,57 @@ import (
 )
 
 func UploadFile(c *gin.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("UploadFile: Panic recovered: %v", r)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+	}()
+	
+	log.Println("UploadFile: Starting file upload")
+	
 	userIDStr := c.GetString("userID")
+	log.Printf("UploadFile: userID from context: %s", userIDStr)
+	
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
+		log.Printf("UploadFile: Failed to parse userID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
-	log.Println("userID", userID)
+	log.Printf("UploadFile: Parsed userID: %s", userID)
 
 	file, err := c.FormFile("file")
 	if err != nil {
+		log.Printf("UploadFile: Failed to get form file: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file not found"})
 		return
 	}
+	log.Printf("UploadFile: Received file: %s, size: %d", file.Filename, file.Size)
 
 	// Get folder_id from form data (optional)
 	folderIDStr := c.PostForm("folder_id")
+	log.Printf("UploadFile: folder_id from form: %s", folderIDStr)
+	
 	var folderID *uuid.UUID
 	if folderIDStr != "" {
 		if id, err := uuid.Parse(folderIDStr); err == nil {
 			folderID = &id
+			log.Printf("UploadFile: Parsed folderID: %s", folderID)
 			
 			// Verify folder exists and belongs to user
 			var folder models.Folder
 			if err := database.DB.Where("id = ? AND user_id = ?", folderID, userID).First(&folder).Error; err != nil {
+				log.Printf("UploadFile: Folder not found or doesn't belong to user: %v", err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": "folder not found"})
 				return
 			}
+			log.Printf("UploadFile: Folder verified: %s", folder.Name)
+		} else {
+			log.Printf("UploadFile: Failed to parse folderID: %v", err)
 		}
+	} else {
+		log.Printf("UploadFile: No folder_id provided, uploading to root")
 	}
 
 	// Remove all whitespace from the filename
@@ -53,34 +76,112 @@ func UploadFile(c *gin.Context) {
 			cleanFilename += string(r)
 		}
 	}
+	log.Printf("UploadFile: Clean filename: %s", cleanFilename)
 
-	uploadDir := "uploads"
-	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload dir"})
+	// Get upload directory from environment variable or use default
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
+	
+	// If it's not an absolute path, make it relative to current working directory
+	if !filepath.IsAbs(uploadDir) {
+		// Get the current working directory
+		currentDir, err := os.Getwd()
+		if err != nil {
+			log.Printf("UploadFile: Failed to get current directory: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to determine upload directory"})
+			return
+		}
+		uploadDir = filepath.Join(currentDir, uploadDir)
+	}
+	
+	// Log upload directory for debugging
+	log.Printf("UploadFile: Upload directory path: %s", uploadDir)
+	
+	// Create upload directory if it doesn't exist
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		// Check if the error is because directory already exists
+		if os.IsExist(err) {
+			log.Printf("UploadFile: Upload directory already exists: %s", uploadDir)
+		} else {
+			log.Printf("UploadFile: Failed to create upload directory %s: %v", uploadDir, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload directory"})
+			return
+		}
+	} else {
+		log.Printf("UploadFile: Upload directory created successfully: %s", uploadDir)
+	}
+	
+	// Verify the directory is writable
+	if info, err := os.Stat(uploadDir); err != nil {
+		log.Printf("UploadFile: Failed to stat upload directory %s: %v", uploadDir, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "upload directory not accessible"})
+		return
+	} else if !info.IsDir() {
+		log.Printf("UploadFile: Upload path is not a directory: %s", uploadDir)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "upload path is not a directory"})
 		return
 	}
+	
+	log.Printf("UploadFile: Upload directory verified successfully")
 
 	timestamp := time.Now().Unix()
 	dst := filepath.Join(uploadDir, fmt.Sprintf("%d_%s", timestamp, cleanFilename))
+	log.Printf("UploadFile: Destination path: %s", dst)
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
+		log.Printf("UploadFile: Failed to save uploaded file to %s: %v", dst, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
 		return
+	}
+	log.Printf("UploadFile: File saved successfully to %s", dst)
+
+	// Get MIME type
+	mimeType := file.Header.Get("Content-Type")
+	if mimeType == "" {
+		// Try to determine MIME type from file extension
+		ext := strings.ToLower(filepath.Ext(cleanFilename))
+		switch ext {
+		case ".jpg", ".jpeg":
+			mimeType = "image/jpeg"
+		case ".png":
+			mimeType = "image/png"
+		case ".gif":
+			mimeType = "image/gif"
+		case ".pdf":
+			mimeType = "application/pdf"
+		case ".txt":
+			mimeType = "text/plain"
+		case ".doc", ".docx":
+			mimeType = "application/msword"
+		case ".xls", ".xlsx":
+			mimeType = "application/vnd.ms-excel"
+		case ".ppt", ".pptx":
+			mimeType = "application/vnd.ms-powerpoint"
+		default:
+			mimeType = "application/octet-stream"
+		}
 	}
 
 	dbFile := models.File{
 		Name:     cleanFilename,
 		Path:     dst,
-		Size:     file.Size, // Capture actual file size
+		Size:     file.Size,
+		MimeType: mimeType,
 		UserID:   userID,
 		FolderID: folderID,
 	}
 
+	log.Printf("UploadFile: Creating database record for file: %s", dbFile.Name)
+	
 	if err := database.DB.Create(&dbFile).Error; err != nil {
+		log.Printf("UploadFile: Failed to save file metadata: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save metadata"})
 		return
 	}
-
+	
+	log.Printf("UploadFile: Database record created successfully, file ID: %s", dbFile.ID)
 	c.JSON(http.StatusOK, gin.H{"message": "file uploaded", "file": dbFile})
 }
 

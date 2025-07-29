@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/andarpratama/nimbus-drive/internal/handlers"
-	"github.com/andarpratama/nimbus-drive/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -49,9 +48,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Parse token
+		// Parse token using MapClaims to match the generation
 		secret := os.Getenv("JWT_SECRET")
-		token, err := jwt.ParseWithClaims(tokenStr, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
 		})
 
@@ -62,17 +61,23 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Set user ID to context
-		claims, ok := token.Claims.(*models.JWTClaims)
+		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to parse claims"})
 			c.Abort()
 			return
 		}
 
-		log.Println("userID", claims.UserID)
+		userIDStr, ok := claims["user_id"].(string)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
+			c.Abort()
+			return
+		}
 
-		c.Set("userID", claims.UserID.String())
-		c.Set("role", claims.Role)
+		log.Println("userID", userIDStr)
+
+		c.Set("userID", userIDStr)
 		c.Next()
 	}
 }

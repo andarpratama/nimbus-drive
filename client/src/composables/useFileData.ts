@@ -25,7 +25,9 @@ export function useFileData() {
       
       // Fetch folders
       const foldersData = await apiRequest<FoldersResponse>('/api/folders')
-      folders.value = foldersData.folders.filter((folder: Folder) => {
+      // Handle null response by defaulting to empty array
+      const allFolders = foldersData.folders || []
+      folders.value = allFolders.filter((folder: Folder) => {
         // Handle both PascalCase and snake_case field names
         const parentId = folder.ParentID || folder.parent_id
         if (folderId === null) {
@@ -36,7 +38,7 @@ export function useFileData() {
       
       // Set current folder if we're in a specific folder
       if (folderId) {
-        currentFolder.value = foldersData.folders.find((f: Folder) => f.ID === folderId) || null
+        currentFolder.value = allFolders.find((f: Folder) => f.ID === folderId) || null
       } else {
         currentFolder.value = null
       }
@@ -45,8 +47,8 @@ export function useFileData() {
       const filesEndpoint = folderId ? `/api/files?folder_id=${folderId}` : '/api/files'
       const filesData = await apiRequest<FilesResponse>(filesEndpoint)
       
-      // No need to filter on frontend since backend handles it
-      files.value = filesData.files
+      // Handle null response by defaulting to empty array
+      files.value = filesData.files || []
       
     } catch (err) {
       console.error('Error fetching data:', err)

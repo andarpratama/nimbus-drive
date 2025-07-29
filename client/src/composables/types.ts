@@ -52,13 +52,13 @@ export interface FileItem {
   deletedAt?: string
 }
 
-// API response types
+// API response types - allow null values to match actual API response
 export interface FoldersResponse {
-  folders: Folder[]
+  folders: Folder[] | null
 }
 
 export interface FilesResponse {
-  files: File[]
+  files: File[] | null
 }
 
 export interface FolderResponse {
