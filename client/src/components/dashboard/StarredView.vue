@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Sidebar from './Sidebar.vue'
 import Toolbar from './Toolbar.vue'
 import ContentArea from './ContentArea.vue'
@@ -16,6 +16,10 @@ const props = defineProps({
   user: {
     type: Object,
     default: null
+  },
+  resetKey: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -27,7 +31,6 @@ const {
   folders,
   currentFolderId,
   currentFolder,
-  breadcrumbs,
   loading: fileLoading,
   error: fileError,
   selectedItems,
@@ -40,6 +43,19 @@ const {
   isSelected,
   clearSelection
 } = useFileManager()
+
+// Custom breadcrumbs for starred view
+const starredBreadcrumbs = computed(() => {
+  if (!isInFolder.value) {
+    return [{ id: null, name: 'Starred' }]
+  }
+  
+  // When in a folder, show Starred > Folder Name
+  return [
+    { id: null, name: 'Starred' },
+    { id: currentFolderId.value, name: currentFolder.value?.Name || 'Folder' }
+  ]
+})
 
 // Use the starred composable
 const {
@@ -112,6 +128,13 @@ const handleLogout = () => {
 // Event handlers
 const handleViewChange = (viewId) => {
   currentView.value = viewId
+  
+  // If clicking on starred while already in starred view, reset to root
+  if (viewId === 'starred') {
+    isInFolder.value = false
+    navigateToRoot()
+    fetchStarredItems()
+  }
 }
 
 const handleSearchChange = (query) => {
@@ -165,6 +188,16 @@ const handleRetry = () => {
     fetchFolderContents(currentFolderId.value)
   } else {
     fetchStarredItems()
+  }
+}
+
+const handleBreadcrumbNavigation = async (folderId) => {
+  if (folderId === null) {
+    // Clicked on "Starred" breadcrumb - go back to starred root
+    isInFolder.value = false
+  } else {
+    // Navigate to specific folder
+    await navigateToFolder(folderId)
   }
 }
 
@@ -428,6 +461,15 @@ const closePreview = () => {
 onMounted(async () => {
   await fetchStarredItems()
 })
+
+// Reset to root when resetKey changes (indicates sidebar navigation)
+watch(() => props.resetKey, () => {
+  isInFolder.value = false
+  // Clear current folder and navigate to root
+  navigateToRoot()
+  // Refresh starred items
+  fetchStarredItems()
+}, { immediate: true })
 </script>
 
 <template>
@@ -454,8 +496,8 @@ onMounted(async () => {
       <!-- Breadcrumb -->
       <Breadcrumb 
         v-if="isInFolder"
-        :breadcrumbs="breadcrumbs"
-        @navigate-breadcrumb="navigateToBreadcrumb"
+        :breadcrumbs="starredBreadcrumbs"
+        @navigate-breadcrumb="handleBreadcrumbNavigation"
       />
 
       <!-- Content Area -->

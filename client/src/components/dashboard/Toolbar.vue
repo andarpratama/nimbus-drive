@@ -200,7 +200,7 @@ onUnmounted(() => {
             @click="toggleUserMenu"
             class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <span class="hidden sm:block capitalize">{{ user.name }}</span>
+            <!-- <span class="hidden sm:block capitalize">{{ user.name }}</span> -->
             <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
               {{ user.name ? user.name.charAt(0).toUpperCase() : 'U' }}
             </div>

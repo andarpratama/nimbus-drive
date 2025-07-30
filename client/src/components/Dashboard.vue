@@ -56,6 +56,7 @@ const {
 const currentView = ref('my-drive') // my-drive, shared, recent, starred, trash
 const viewMode = ref('grid') // grid, list
 const searchQuery = ref('')
+const starredViewKey = ref(0) // Key to force StarredView reset
 
 // Ref for TrashView component
 const trashViewRef = ref(null)
@@ -147,6 +148,9 @@ const handleViewChange = (viewId) => {
   
   if (viewId === 'my-drive') {
     navigateToRoot()
+  } else if (viewId === 'starred') {
+    // Reset starred view to root when clicking sidebar link
+    starredViewKey.value++
   }
   // Note: starred view is handled by StarredView component
 }
@@ -696,7 +700,9 @@ onMounted(async () => {
         <!-- Starred View -->
         <StarredView
           v-else-if="currentView === 'starred'"
+          :key="starredViewKey"
           :user="user"
+          :reset-key="starredViewKey"
           @logout="handleLogout"
           @navigate-to-folder="handleNavigateToFolder"
         />
