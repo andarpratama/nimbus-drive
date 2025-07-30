@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"strings"
 
 	"github.com/andarpratama/nimbus-drive/internal/database"
 	"github.com/andarpratama/nimbus-drive/internal/models"
@@ -12,11 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// StarFile stars a file for the authenticated user
-func StarFile(c *gin.Context) {
+// StarItem stars a file or folder for the authenticated user
+func StarItem(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("StarFile: Panic recovered: %v", r)
+			log.Printf("StarItem: Panic recovered: %v", r)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 	}()
@@ -24,56 +25,90 @@ func StarFile(c *gin.Context) {
 	userIDStr := c.GetString("userID")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		log.Printf("StarFile: Failed to parse userID: %v", err)
+		log.Printf("StarItem: Failed to parse userID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
 
-	fileIDStr := c.Param("id")
-	fileID, err := uuid.Parse(fileIDStr)
-	if err != nil {
-		log.Printf("StarFile: Failed to parse fileID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file id"})
+	var input struct {
+		ItemID   string `json:"item_id" binding:"required"`
+		ItemType string `json:"item_type" binding:"required,oneof=file folder"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("StarItem: Failed to bind JSON: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Check if file exists and belongs to user
-	var file models.File
-	if err := database.DB.Where("id = ? AND user_id = ?", fileID, userID).First(&file).Error; err != nil {
-		log.Printf("StarFile: File not found or doesn't belong to user: %v", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+	itemID, err := uuid.Parse(input.ItemID)
+	if err != nil {
+		log.Printf("StarItem: Failed to parse itemID: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
 		return
+	}
+
+	// Check if item exists and belongs to user
+	if input.ItemType == "file" {
+		var file models.File
+		if err := database.DB.Where("id = ? AND user_id = ?", itemID, userID).First(&file).Error; err != nil {
+			log.Printf("StarItem: File not found or doesn't belong to user: %v", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+	} else if input.ItemType == "folder" {
+		var folder models.Folder
+		if err := database.DB.Where("id = ? AND user_id = ?", itemID, userID).First(&folder).Error; err != nil {
+			log.Printf("StarItem: Folder not found or doesn't belong to user: %v", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+			return
+		}
 	}
 
 	// Check if already starred
 	var existingStarred models.Starred
-	if err := database.DB.Where("user_id = ? AND file_id = ?", userID, fileID).First(&existingStarred).Error; err == nil {
-		log.Printf("StarFile: File already starred")
-		c.JSON(http.StatusConflict, gin.H{"error": "file already starred"})
+	var query string
+	if input.ItemType == "file" {
+		query = "user_id = ? AND file_id = ?"
+	} else {
+		query = "user_id = ? AND folder_id = ?"
+	}
+
+	if err := database.DB.Where(query, userID, itemID).First(&existingStarred).Error; err == nil {
+		log.Printf("StarItem: Item already starred")
+		c.JSON(http.StatusConflict, gin.H{"error": "item already starred"})
 		return
 	}
 
 	// Create starred record
 	starred := models.Starred{
 		UserID: userID,
-		FileID: &fileID,
+	}
+
+	if input.ItemType == "file" {
+		starred.FileID = &itemID
+	} else {
+		starred.FolderID = &itemID
 	}
 
 	if err := database.DB.Create(&starred).Error; err != nil {
-		log.Printf("StarFile: Failed to create starred record: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to star file"})
+		log.Printf("StarItem: Failed to create starred record: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to star item"})
 		return
 	}
 
-	log.Printf("StarFile: Successfully starred file %s", fileID)
-	c.JSON(http.StatusCreated, gin.H{"message": "file starred successfully"})
+	log.Printf("StarItem: Successfully starred %s %s", input.ItemType, itemID)
+	c.JSON(http.StatusCreated, gin.H{
+		"message": fmt.Sprintf("%s starred successfully", input.ItemType),
+		"starred": true,
+	})
 }
 
-// UnstarFile removes star from a file
-func UnstarFile(c *gin.Context) {
+// UnstarItem removes star from a file or folder for the authenticated user
+func UnstarItem(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("UnstarFile: Panic recovered: %v", r)
+			log.Printf("UnstarItem: Panic recovered: %v", r)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 	}()
@@ -81,42 +116,62 @@ func UnstarFile(c *gin.Context) {
 	userIDStr := c.GetString("userID")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		log.Printf("UnstarFile: Failed to parse userID: %v", err)
+		log.Printf("UnstarItem: Failed to parse userID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
 
-	fileIDStr := c.Param("id")
-	fileID, err := uuid.Parse(fileIDStr)
+	var input struct {
+		ItemID   string `json:"item_id" binding:"required"`
+		ItemType string `json:"item_type" binding:"required,oneof=file folder"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("UnstarItem: Failed to bind JSON: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	itemID, err := uuid.Parse(input.ItemID)
 	if err != nil {
-		log.Printf("UnstarFile: Failed to parse fileID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file id"})
+		log.Printf("UnstarItem: Failed to parse itemID: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
 		return
 	}
 
 	// Delete starred record
-	result := database.DB.Where("user_id = ? AND file_id = ?", userID, fileID).Delete(&models.Starred{})
+	var query string
+	if input.ItemType == "file" {
+		query = "user_id = ? AND file_id = ?"
+	} else {
+		query = "user_id = ? AND folder_id = ?"
+	}
+
+	result := database.DB.Where(query, userID, itemID).Delete(&models.Starred{})
 	if result.Error != nil {
-		log.Printf("UnstarFile: Failed to delete starred record: %v", result.Error)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unstar file"})
+		log.Printf("UnstarItem: Failed to delete starred record: %v", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unstar item"})
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		log.Printf("UnstarFile: File not starred")
-		c.JSON(http.StatusNotFound, gin.H{"error": "file not starred"})
+		log.Printf("UnstarItem: Item not starred")
+		c.JSON(http.StatusNotFound, gin.H{"error": "item not starred"})
 		return
 	}
 
-	log.Printf("UnstarFile: Successfully unstarred file %s", fileID)
-	c.JSON(http.StatusOK, gin.H{"message": "file unstarred successfully"})
+	log.Printf("UnstarItem: Successfully unstarred %s %s", input.ItemType, itemID)
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("%s unstarred successfully", input.ItemType),
+		"starred": false,
+	})
 }
 
-// StarFolder stars a folder for the authenticated user
-func StarFolder(c *gin.Context) {
+// ToggleStarItem toggles the star status of a file or folder for the authenticated user
+func ToggleStarItem(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("StarFolder: Panic recovered: %v", r)
+			log.Printf("ToggleStarItem: Panic recovered: %v", r)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 	}()
@@ -124,92 +179,95 @@ func StarFolder(c *gin.Context) {
 	userIDStr := c.GetString("userID")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		log.Printf("StarFolder: Failed to parse userID: %v", err)
+		log.Printf("ToggleStarItem: Failed to parse userID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
 
-	folderIDStr := c.Param("id")
-	folderID, err := uuid.Parse(folderIDStr)
-	if err != nil {
-		log.Printf("StarFolder: Failed to parse folderID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid folder id"})
+	var input struct {
+		ItemID   string `json:"item_id" binding:"required"`
+		ItemType string `json:"item_type" binding:"required,oneof=file folder"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("ToggleStarItem: Failed to bind JSON: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Check if folder exists and belongs to user
-	var folder models.Folder
-	if err := database.DB.Where("id = ? AND user_id = ?", folderID, userID).First(&folder).Error; err != nil {
-		log.Printf("StarFolder: Folder not found or doesn't belong to user: %v", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+	itemID, err := uuid.Parse(input.ItemID)
+	if err != nil {
+		log.Printf("ToggleStarItem: Failed to parse itemID: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
 		return
+	}
+
+	// Check if item exists and belongs to user
+	if input.ItemType == "file" {
+		var file models.File
+		if err := database.DB.Where("id = ? AND user_id = ?", itemID, userID).First(&file).Error; err != nil {
+			log.Printf("ToggleStarItem: File not found or doesn't belong to user: %v", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+	} else if input.ItemType == "folder" {
+		var folder models.Folder
+		if err := database.DB.Where("id = ? AND user_id = ?", itemID, userID).First(&folder).Error; err != nil {
+			log.Printf("ToggleStarItem: Folder not found or doesn't belong to user: %v", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+			return
+		}
 	}
 
 	// Check if already starred
 	var existingStarred models.Starred
-	if err := database.DB.Where("user_id = ? AND folder_id = ?", userID, folderID).First(&existingStarred).Error; err == nil {
-		log.Printf("StarFolder: Folder already starred")
-		c.JSON(http.StatusConflict, gin.H{"error": "folder already starred"})
-		return
+	var query string
+	if input.ItemType == "file" {
+		query = "user_id = ? AND file_id = ?"
+	} else {
+		query = "user_id = ? AND folder_id = ?"
 	}
 
-	// Create starred record
-	starred := models.Starred{
-		UserID:   userID,
-		FolderID: &folderID,
-	}
+	isStarred := database.DB.Where(query, userID, itemID).First(&existingStarred).Error == nil
 
-	if err := database.DB.Create(&starred).Error; err != nil {
-		log.Printf("StarFolder: Failed to create starred record: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to star folder"})
-		return
-	}
-
-	log.Printf("StarFolder: Successfully starred folder %s", folderID)
-	c.JSON(http.StatusCreated, gin.H{"message": "folder starred successfully"})
-}
-
-// UnstarFolder removes star from a folder
-func UnstarFolder(c *gin.Context) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("UnstarFolder: Panic recovered: %v", r)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+	if isStarred {
+		// Unstar the item
+		result := database.DB.Where(query, userID, itemID).Delete(&models.Starred{})
+		if result.Error != nil {
+			log.Printf("ToggleStarItem: Failed to delete starred record: %v", result.Error)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unstar item"})
+			return
 		}
-	}()
 
-	userIDStr := c.GetString("userID")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		log.Printf("UnstarFolder: Failed to parse userID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
-		return
+		log.Printf("ToggleStarItem: Successfully unstarred %s %s", input.ItemType, itemID)
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("%s unstarred successfully", input.ItemType),
+			"starred": false,
+		})
+	} else {
+		// Star the item
+		starred := models.Starred{
+			UserID: userID,
+		}
+
+		if input.ItemType == "file" {
+			starred.FileID = &itemID
+		} else {
+			starred.FolderID = &itemID
+		}
+
+		if err := database.DB.Create(&starred).Error; err != nil {
+			log.Printf("ToggleStarItem: Failed to create starred record: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to star item"})
+			return
+		}
+
+		log.Printf("ToggleStarItem: Successfully starred %s %s", input.ItemType, itemID)
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("%s starred successfully", input.ItemType),
+			"starred": true,
+		})
 	}
-
-	folderIDStr := c.Param("id")
-	folderID, err := uuid.Parse(folderIDStr)
-	if err != nil {
-		log.Printf("UnstarFolder: Failed to parse folderID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid folder id"})
-		return
-	}
-
-	// Delete starred record
-	result := database.DB.Where("user_id = ? AND folder_id = ?", userID, folderID).Delete(&models.Starred{})
-	if result.Error != nil {
-		log.Printf("UnstarFolder: Failed to delete starred record: %v", result.Error)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unstar folder"})
-		return
-	}
-
-	if result.RowsAffected == 0 {
-		log.Printf("UnstarFolder: Folder not starred")
-		c.JSON(http.StatusNotFound, gin.H{"error": "folder not starred"})
-		return
-	}
-
-	log.Printf("UnstarFolder: Successfully unstarred folder %s", folderID)
-	c.JSON(http.StatusOK, gin.H{"message": "folder unstarred successfully"})
 }
 
 // ListStarredItems returns all starred items (files and folders) for the authenticated user
@@ -237,46 +295,35 @@ func ListStarredItems(c *gin.Context) {
 		return
 	}
 	
-	log.Printf("ListStarredItems: Raw starred items from DB: %+v", starredItems)
-	
-	// Test the first item
-	if len(starredItems) > 0 {
-		firstItem := starredItems[0]
-		log.Printf("ListStarredItems: First item - FileID: %v, FolderID: %v, File: %v, Folder: %v", 
-			firstItem.FileID, firstItem.FolderID, firstItem.File != nil, firstItem.Folder != nil)
-		if firstItem.Folder != nil {
-			log.Printf("ListStarredItems: Folder name: %s", firstItem.Folder.Name)
-		}
-	}
-	
 	log.Printf("ListStarredItems: Fetched %d starred items", len(starredItems))
 
 	// Format response
 	var response []gin.H
 	for i, item := range starredItems {
-		log.Printf("ListStarredItems: Processing item %d - FileID: %v, FolderID: %v, File: %v, Folder: %v", i, item.FileID, item.FolderID, item.File != nil, item.Folder != nil)
-		log.Printf("ListStarredItems: Item details - ID: %s, Type: %s", item.ID, item.Type)
+		log.Printf("ListStarredItems: Processing item %d - FileID: %v, FolderID: %v", i, item.FileID, item.FolderID)
+		
 		if item.FileID != nil && item.File != nil {
 			// Format file size for display
 			sizeStr := formatFileSize(item.File.Size)
 			
+			// Determine file type based on extension
+			fileType := getFileTypeFromName(item.File.Name)
+			
 			response = append(response, gin.H{
-				"id":        item.ID,
-				"type":      "file",
-				"file_id":   item.FileID,
-				"name":      item.File.Name,
-				"size":      sizeStr,
-				"mime_type": item.File.MimeType,
+				"id":         item.ID,
+				"type":       fileType,
+				"file_id":    item.FileID,
+				"name":       item.File.Name,
+				"size":       sizeStr,
+				"mime_type":  item.File.MimeType,
 				"created_at": item.CreatedAt,
 			})
 		} else if item.FolderID != nil && item.Folder != nil {
-			log.Printf("ListStarredItems: Entering folder processing block")
+			log.Printf("ListStarredItems: Processing folder %s (%s)", item.Folder.Name, item.FolderID)
+			
 			// Get folder item count for display
 			var fileCount int64
 			var subfolderCount int64
-			
-			// Debug logging
-			log.Printf("ListStarredItems: Processing folder %s (%s)", item.Folder.Name, item.FolderID)
 			
 			// Count files in folder
 			if err := database.DB.Model(&models.File{}).Where("folder_id = ? AND deleted_at IS NULL", item.FolderID).Count(&fileCount).Error; err != nil {
@@ -291,22 +338,12 @@ func ListStarredItems(c *gin.Context) {
 			totalItems := fileCount + subfolderCount
 			log.Printf("ListStarredItems: Folder %s has %d files and %d subfolders (total: %d)", item.Folder.Name, fileCount, subfolderCount, totalItems)
 			
-			var size string
-			if totalItems > 0 {
-				size = fmt.Sprintf("%d item%s", totalItems, totalItems != 1 ? "s" : "")
-			} else {
-				size = "Empty"
-			}
-			
-			log.Printf("ListStarredItems: Setting folder size to: %s", size)
-			
 			response = append(response, gin.H{
 				"id":           item.ID,
 				"type":         "folder",
 				"folder_id":    item.FolderID,
 				"name":         item.Folder.Name,
-				"size":         totalItems,
-				"total_items":  totalItems,
+				"size":         totalItems, // Total items as integer
 				"created_at":   item.CreatedAt,
 			})
 		} else {
@@ -319,52 +356,6 @@ func ListStarredItems(c *gin.Context) {
 		"starred_items": response,
 		"total_items":   len(response),
 	})
-}
-
-// CheckStarredStatus checks if a file or folder is starred by the user
-func CheckStarredStatus(c *gin.Context) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("CheckStarredStatus: Panic recovered: %v", r)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		}
-	}()
-
-	userIDStr := c.GetString("userID")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		log.Printf("CheckStarredStatus: Failed to parse userID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
-		return
-	}
-
-	itemIDStr := c.Param("id")
-	itemID, err := uuid.Parse(itemIDStr)
-	if err != nil {
-		log.Printf("CheckStarredStatus: Failed to parse itemID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
-		return
-	}
-
-	itemType := c.Query("type") // "file" or "folder"
-	if itemType != "file" && itemType != "folder" {
-		log.Printf("CheckStarredStatus: Invalid item type: %s", itemType)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item type"})
-		return
-	}
-
-	var starred models.Starred
-	var query string
-	if itemType == "file" {
-		query = "user_id = ? AND file_id = ?"
-	} else {
-		query = "user_id = ? AND folder_id = ?"
-	}
-
-	isStarred := database.DB.Where(query, userID, itemID).First(&starred).Error == nil
-
-	log.Printf("CheckStarredStatus: Item %s (type: %s) starred: %t", itemID, itemType, isStarred)
-	c.JSON(http.StatusOK, gin.H{"is_starred": isStarred})
 }
 
 // formatFileSize formats bytes into human readable format
@@ -383,4 +374,112 @@ func formatFileSize(bytes int64) string {
 	
 	value := float64(bytes) / math.Pow(unit, float64(exp))
 	return fmt.Sprintf("%.1f %s", value, sizes[exp])
+}
+
+// getFileTypeFromName determines the file type based on the file extension
+func getFileTypeFromName(filename string) string {
+	if filename == "" {
+		return "document"
+	}
+	
+	// Get file extension
+	ext := ""
+	if idx := strings.LastIndex(filename, "."); idx != -1 {
+		ext = strings.ToLower(filename[idx+1:])
+	}
+	
+	if ext == "" {
+		return "document"
+	}
+	
+	// Map extensions to types
+	typeMap := map[string]string{
+		// Documents
+		"pdf": "pdf",
+		"doc": "document",
+		"docx": "document",
+		"txt": "text",
+		"rtf": "document",
+		"odt": "document",
+		
+		// Spreadsheets
+		"xls": "spreadsheet",
+		"xlsx": "spreadsheet",
+		"csv": "spreadsheet",
+		"ods": "spreadsheet",
+		
+		// Presentations
+		"ppt": "presentation",
+		"pptx": "presentation",
+		"odp": "presentation",
+		
+		// Images
+		"jpg": "image",
+		"jpeg": "image",
+		"png": "image",
+		"gif": "image",
+		"bmp": "image",
+		"webp": "image",
+		"svg": "image",
+		"ico": "image",
+		
+		// Media
+		"mp4": "video",
+		"avi": "video",
+		"mov": "video",
+		"wmv": "video",
+		"flv": "video",
+		"webm": "video",
+		"mp3": "audio",
+		"wav": "audio",
+		"flac": "audio",
+		"aac": "audio",
+		
+		// Archives
+		"zip": "archive",
+		"rar": "archive",
+		"7z": "archive",
+		"tar": "archive",
+		"gz": "archive",
+		
+		// Code
+		"js": "code",
+		"ts": "code",
+		"jsx": "code",
+		"tsx": "code",
+		"html": "code",
+		"css": "code",
+		"scss": "code",
+		"sass": "code",
+		"py": "code",
+		"java": "code",
+		"cpp": "code",
+		"c": "code",
+		"php": "code",
+		"rb": "code",
+		"go": "code",
+		"rs": "code",
+		"swift": "code",
+		"kt": "code",
+		"sql": "code",
+		
+		// Data
+		"json": "data",
+		"xml": "data",
+		"yaml": "data",
+		"yml": "data",
+		
+		// Other
+		"exe": "executable",
+		"msi": "executable",
+		"dmg": "executable",
+		"deb": "executable",
+		"rpm": "executable",
+	}
+	
+	if fileType, exists := typeMap[ext]; exists {
+		return fileType
+	}
+	
+	return "document"
 } 

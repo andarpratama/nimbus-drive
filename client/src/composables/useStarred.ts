@@ -4,7 +4,7 @@ import type { FileItem } from './types'
 
 export interface StarredItem {
   id: string
-  type: 'file' | 'folder'
+  type: string // Can be 'folder', 'image', 'document', 'presentation', etc.
   file_id?: string
   folder_id?: string
   name: string
@@ -15,6 +15,11 @@ export interface StarredItem {
 
 export interface StarredResponse {
   starred_items: StarredItem[]
+}
+
+export interface StarToggleResponse {
+  message: string
+  starred: boolean
 }
 
 export function useStarred() {
@@ -38,87 +43,99 @@ export function useStarred() {
     }
   }
 
-  // Star a file
-  const starFile = async (fileId: string): Promise<boolean> => {
+  // Star an item (file or folder)
+  const starItem = async (itemId: string, itemType: 'file' | 'folder'): Promise<boolean> => {
     try {
-      await apiRequest(`/api/starred/files/${fileId}/star`, {
-        method: 'POST'
+      const response = await apiRequest<StarToggleResponse>('/api/starred', {
+        method: 'POST',
+        body: JSON.stringify({
+          item_id: itemId,
+          item_type: itemType
+        })
       })
-      return true
+      return response.starred
     } catch (err) {
-      console.error('Error starring file:', err)
+      console.error('Error starring item:', err)
       return false
     }
   }
 
-  // Unstar a file
-  const unstarFile = async (fileId: string): Promise<boolean> => {
+  // Unstar an item (file or folder)
+  const unstarItem = async (itemId: string, itemType: 'file' | 'folder'): Promise<boolean> => {
     try {
-      await apiRequest(`/api/starred/files/${fileId}/star`, {
-        method: 'DELETE'
+      const response = await apiRequest<StarToggleResponse>('/api/starred', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          item_id: itemId,
+          item_type: itemType
+        })
       })
-      return true
+      return !response.starred
     } catch (err) {
-      console.error('Error unstarring file:', err)
+      console.error('Error unstarring item:', err)
       return false
     }
   }
 
-  // Star a folder
-  const starFolder = async (folderId: string): Promise<boolean> => {
-    try {
-      await apiRequest(`/api/starred/folders/${folderId}/star`, {
-        method: 'POST'
-      })
-      return true
-    } catch (err) {
-      console.error('Error starring folder:', err)
-      return false
-    }
-  }
-
-  // Unstar a folder
-  const unstarFolder = async (folderId: string): Promise<boolean> => {
-    try {
-      await apiRequest(`/api/starred/folders/${folderId}/star`, {
-        method: 'DELETE'
-      })
-      return true
-    } catch (err) {
-      console.error('Error unstarring folder:', err)
-      return false
-    }
-  }
-
-  // Check if an item is starred
-  const checkStarredStatus = async (itemId: string, type: 'file' | 'folder'): Promise<boolean> => {
-    try {
-      const response = await apiRequest<{ is_starred: boolean }>(`/api/starred/${itemId}/status?type=${type}`)
-      return response.is_starred
-    } catch (err) {
-      console.error('Error checking starred status:', err)
-      return false
-    }
-  }
-
-  // Toggle star for an item
+  // Toggle star for an item (recommended method)
   const toggleStar = async (item: FileItem): Promise<boolean> => {
-    if (item.type === 'folder' && item.folderId) {
-      const isStarred = await checkStarredStatus(item.folderId, 'folder')
-      if (isStarred) {
-        return await unstarFolder(item.folderId)
+    try {
+      // Determine if it's a file or folder based on the presence of folderId or fileId
+      let itemId: string | undefined
+      let itemType: 'file' | 'folder'
+      
+      if (item.folderId) {
+        itemId = item.folderId
+        itemType = 'folder'
+      } else if (item.fileId) {
+        itemId = item.fileId
+        itemType = 'file'
       } else {
-        return await starFolder(item.folderId)
+        console.error('No item ID found for toggle star')
+        return false
       }
-    } else if (item.fileId) {
-      const isStarred = await checkStarredStatus(item.fileId, 'file')
-      if (isStarred) {
-        return await unstarFile(item.fileId)
-      } else {
-        return await starFile(item.fileId)
-      }
+
+      const response = await apiRequest<StarToggleResponse>('/api/starred', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          item_id: itemId,
+          item_type: itemType
+        })
+      })
+      return true
+    } catch (err) {
+      console.error('Error toggling star:', err)
+      return false
     }
-    return false
+  }
+
+  // Legacy methods for backward compatibility
+  const starFile = async (fileId: string): Promise<boolean> => {
+    return await starItem(fileId, 'file')
+  }
+
+  const unstarFile = async (fileId: string): Promise<boolean> => {
+    return await unstarItem(fileId, 'file')
+  }
+
+  const starFolder = async (folderId: string): Promise<boolean> => {
+    return await starItem(folderId, 'folder')
+  }
+
+  const unstarFolder = async (folderId: string): Promise<boolean> => {
+    return await unstarItem(folderId, 'folder')
+  }
+
+  // Check if an item is starred (this endpoint might not exist anymore, so we'll check locally)
+  const checkStarredStatus = async (itemId: string, type: 'file' | 'folder'): Promise<boolean> => {
+    // Check if the item exists in our starred items list
+    return starredItems.value.some(item => {
+      if (type === 'file') {
+        return item.file_id === itemId
+      } else {
+        return item.folder_id === itemId
+      }
+    })
   }
 
   // Convert starred items to FileItem format for display
@@ -128,20 +145,20 @@ export function useStarred() {
       let displaySize = 'Unknown'
       let rawSize = 0
       
-      if (item.type === 'file' && item.size) {
-        // For files, use the actual file size
-        displaySize = item.size
-        rawSize = parseInt(item.size) || 0
-      } else if (item.type === 'folder' && item.size) {
+      if (item.type === 'folder' && item.size) {
         // For folders, use the item count from backend
         displaySize = item.size
         rawSize = 0 // Folders don't have raw size
+      } else if (item.size) {
+        // For files, use the actual file size
+        displaySize = item.size
+        rawSize = parseInt(item.size) || 0
       }
       
       return {
-        id: item.type === 'file' ? `file-${item.file_id}` : `folder-${item.folder_id}`,
+        id: item.type === 'folder' ? `folder-${item.folder_id}` : `file-${item.file_id}`,
         name: item.name,
-        type: item.type,
+        type: item.type, // Use the actual type from server (image, document, etc.)
         size: displaySize,
         modified: new Date(item.created_at).toLocaleDateString(),
         starred: true,
@@ -162,11 +179,14 @@ export function useStarred() {
     
     // Methods
     fetchStarredItems,
+    starItem,
+    unstarItem,
+    toggleStar,
+    // Legacy methods for backward compatibility
     starFile,
     unstarFile,
     starFolder,
     unstarFolder,
-    checkStarredStatus,
-    toggleStar
+    checkStarredStatus
   }
 } 

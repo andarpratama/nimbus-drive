@@ -10,17 +10,15 @@ func RegisterStarredRoutes(starred *gin.RouterGroup) {
 	protected := starred.Group("/starred")
 	protected.Use(middleware.AuthMiddleware())
 
-	// Star/unstar files
-	protected.POST("/files/:id/star", handlers.StarFile)
-	protected.DELETE("/files/:id/star", handlers.UnstarFile)
+	// Star an item (file or folder)
+	protected.POST("", handlers.StarItem)
 
-	// Star/unstar folders
-	protected.POST("/folders/:id/star", handlers.StarFolder)
-	protected.DELETE("/folders/:id/star", handlers.UnstarFolder)
+	// Unstar an item (file or folder)
+	protected.DELETE("", handlers.UnstarItem)
+
+	// Toggle star status for an item (file or folder)
+	protected.PATCH("", handlers.ToggleStarItem)
 
 	// List all starred items
 	protected.GET("", handlers.ListStarredItems)
-
-	// Check if an item is starred
-	protected.GET("/:id/status", handlers.CheckStarredStatus)
 } 

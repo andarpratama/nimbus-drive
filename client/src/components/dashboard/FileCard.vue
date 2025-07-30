@@ -83,7 +83,7 @@ const handleContextMenu = (event) => {
         <div v-else class="text-4xl">📁</div>
       </div>
       <div class="text-xs text-gray-500 dark:text-gray-400">
-        <span v-if="item.type === 'folder'">{{ item.size }}</span>
+        <span v-if="item.type === 'folder'">{{ item.size }} {{ item.size === 1 ? 'Item' : 'Items' }}</span>
         <span v-else>{{ item.size }}</span>
       </div>
     </div>

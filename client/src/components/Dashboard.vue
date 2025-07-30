@@ -619,6 +619,17 @@ const handleMoveModalClose = () => {
   moveModal.value.item = null
 }
 
+const handleNavigateToFolder = async (folderId) => {
+  // Switch to my-drive view and navigate to the folder
+  currentView.value = 'my-drive'
+  await navigateToFolder(folderId)
+  
+  // Update URL to reflect current view
+  const url = new URL(window.location)
+  url.searchParams.set('view', 'my-drive')
+  window.history.pushState({}, '', url)
+}
+
 // Handle browser back/forward buttons
 const handlePopState = () => {
   initializeViewFromURL()
@@ -687,6 +698,7 @@ onMounted(async () => {
           v-else-if="currentView === 'starred'"
           :user="user"
           @logout="handleLogout"
+          @navigate-to-folder="handleNavigateToFolder"
         />
         
         <!-- Trash View -->

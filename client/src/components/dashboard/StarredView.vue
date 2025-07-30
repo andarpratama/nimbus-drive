@@ -7,6 +7,7 @@ import ContextMenu from './ContextMenu.vue'
 import ConfirmModal from './ConfirmModal.vue'
 import Notification from './Notification.vue'
 import Breadcrumb from './Breadcrumb.vue'
+import PreviewModal from './PreviewModal.vue'
 import { useFileManager } from '../../composables/useFileManager'
 import { useStarred } from '../../composables/useStarred'
 
@@ -18,7 +19,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits(['logout', 'navigate-to-folder'])
 
 // Use the file manager composable
 const {
@@ -53,6 +54,7 @@ const {
 const currentView = ref('starred')
 const viewMode = ref('grid') // grid, list
 const searchQuery = ref('')
+const isInFolder = ref(false) // Track if we're viewing folder contents
 
 // Context menu state
 const contextMenu = ref({
@@ -79,13 +81,19 @@ const notification = ref({
   message: ''
 })
 
+// Preview modal state
+const previewModal = ref({
+  visible: false,
+  file: null
+})
+
 // Computed properties for starred view
 const loading = computed(() => starredLoading.value)
 const error = computed(() => starredError.value)
 
-// Filtered items - use starred items from API
+// Filtered items - use starred items from API when not in folder, otherwise use file manager items
 const filteredItems = computed(() => {
-  let items = starredFileItems.value
+  let items = isInFolder.value ? allItems.value : starredFileItems.value
   
   if (searchQuery.value) {
     items = items.filter(item => 
@@ -118,12 +126,21 @@ const handleItemSelect = (itemId) => {
   selectItem(itemId)
 }
 
-const handleItemDoubleClick = (item) => {
+const handleItemDoubleClick = async (item) => {
   if (item.type === 'folder') {
-    navigateToFolder(item.folderId)
+    // Navigate to folder contents
+    isInFolder.value = true
+    await navigateToFolder(item.folderId)
+    // Emit event to parent to update view
+    emit('navigate-to-folder', item.folderId)
   } else {
-    // Handle file click (download, preview, etc.)
-    console.log('File clicked:', item)
+    // Handle file click (preview for images, download for others)
+    if (isImageFile(item)) {
+      openPreview(item)
+    } else {
+      console.log('File clicked:', item)
+      // TODO: Implement download functionality
+    }
   }
 }
 
@@ -144,7 +161,11 @@ const handleItemStarToggle = async (item) => {
 }
 
 const handleRetry = () => {
-  fetchStarredItems()
+  if (isInFolder.value) {
+    fetchFolderContents(currentFolderId.value)
+  } else {
+    fetchStarredItems()
+  }
 }
 
 const handleContextMenu = (data) => {
@@ -210,7 +231,7 @@ const handleContextMenuAction = (data) => {
       console.log('Select all items')
       break
     case 'preview':
-      console.log('Preview item:', item.name)
+      openPreview(item)
       break
     case 'move':
       console.log('Move item:', item.name)
@@ -288,7 +309,11 @@ const deleteItem = async (item) => {
     if (response.ok) {
       showNotification('success', 'Item moved to trash', `${item.name} has been moved to trash.`)
       // Refresh the data
-      await fetchFolderContents(currentFolderId.value)
+      if (isInFolder.value) {
+        await fetchFolderContents(currentFolderId.value)
+      } else {
+        await fetchStarredItems()
+      }
     } else {
       showNotification('error', 'Delete failed', 'Failed to delete the item.')
     }
@@ -318,7 +343,11 @@ const permanentlyDeleteItem = async (item) => {
     if (response.ok) {
       showNotification('success', 'Item permanently deleted', `${item.name} has been permanently deleted.`)
       // Refresh the data
-      await fetchFolderContents(currentFolderId.value)
+      if (isInFolder.value) {
+        await fetchFolderContents(currentFolderId.value)
+      } else {
+        await fetchStarredItems()
+      }
     } else {
       showNotification('error', 'Delete failed', 'Failed to permanently delete the item.')
     }
@@ -348,7 +377,11 @@ const restoreItem = async (item) => {
     if (response.ok) {
       showNotification('success', 'Item restored', `${item.name} has been restored.`)
       // Refresh the data
-      await fetchFolderContents(currentFolderId.value)
+      if (isInFolder.value) {
+        await fetchFolderContents(currentFolderId.value)
+      } else {
+        await fetchStarredItems()
+      }
     } else {
       showNotification('error', 'Restore failed', 'Failed to restore the item.')
     }
@@ -369,6 +402,26 @@ const showNotification = (type, title, message) => {
 
 const handleNotificationClose = () => {
   notification.value.visible = false
+}
+
+// Helper functions
+const isImageFile = (item) => {
+  if (!item || item.type === 'folder') return false
+  const imageTypes = ['image', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
+  return imageTypes.includes(item.type)
+}
+
+const openPreview = (item) => {
+  if (item.type === 'folder') return
+  previewModal.value = {
+    visible: true,
+    file: item
+  }
+}
+
+const closePreview = () => {
+  previewModal.value.visible = false
+  previewModal.value.file = null
 }
 
 // Initialize on mount
@@ -400,6 +453,7 @@ onMounted(async () => {
 
       <!-- Breadcrumb -->
       <Breadcrumb 
+        v-if="isInFolder"
         :breadcrumbs="breadcrumbs"
         @navigate-breadcrumb="navigateToBreadcrumb"
       />
@@ -453,6 +507,13 @@ onMounted(async () => {
       :title="notification.title"
       :message="notification.message"
       @close="handleNotificationClose"
+    />
+    
+    <!-- Preview Modal -->
+    <PreviewModal
+      :visible="previewModal.visible"
+      :file="previewModal.file"
+      @close="closePreview"
     />
   </div>
 </template>
