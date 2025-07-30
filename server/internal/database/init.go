@@ -13,5 +13,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.File{},
 		&models.SharedFile{},
 		&models.Session{},
+		&models.Starred{},
 	)
 }

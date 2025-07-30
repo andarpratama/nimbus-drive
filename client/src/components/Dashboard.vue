@@ -4,6 +4,7 @@ import Sidebar from './dashboard/Sidebar.vue'
 import Toolbar from './dashboard/Toolbar.vue'
 import ContentArea from './dashboard/ContentArea.vue'
 import TrashView from './dashboard/TrashView.vue'
+import StarredView from './dashboard/StarredView.vue'
 import ContextMenu from './dashboard/ContextMenu.vue'
 import ConfirmModal from './dashboard/ConfirmModal.vue'
 import Notification from './dashboard/Notification.vue'
@@ -147,6 +148,7 @@ const handleViewChange = (viewId) => {
   if (viewId === 'my-drive') {
     navigateToRoot()
   }
+  // Note: starred view is handled by StarredView component
 }
 
 const handleSearchChange = (query) => {
@@ -175,8 +177,22 @@ const handleItemDoubleClick = (item) => {
   }
 }
 
-const handleItemStarToggle = (itemId) => {
-  toggleStar(itemId)
+const handleItemStarToggle = async (item) => {
+  try {
+    const success = await toggleStar(item)
+    if (success) {
+      // Refresh the current view data
+      if (currentView.value === 'my-drive') {
+        await fetchFolderContents(currentFolderId.value)
+      }
+      showNotification('success', 'Star updated', `${item.name} has been ${item.starred ? 'unstarred' : 'starred'}.`)
+    } else {
+      showNotification('error', 'Star update failed', 'Failed to update star status.')
+    }
+  } catch (error) {
+    console.error('Star toggle error:', error)
+    showNotification('error', 'Star update failed', 'An error occurred while updating star status.')
+  }
 }
 
 const handleRetry = () => {
@@ -643,7 +659,7 @@ onMounted(async () => {
 
       <!-- Breadcrumb -->
       <Breadcrumb 
-        v-if="currentView !== 'trash'"
+        v-if="currentView === 'my-drive'"
         :breadcrumbs="breadcrumbs"
         @navigate-breadcrumb="navigateToBreadcrumb"
       />
@@ -652,7 +668,7 @@ onMounted(async () => {
       <div class="flex-1 flex flex-col">
         <!-- Content Area -->
         <ContentArea 
-          v-if="currentView !== 'trash'"
+          v-if="currentView === 'my-drive'"
           :items="filteredItems"
           :selected-items="selectedItems"
           :view-mode="viewMode"
@@ -666,9 +682,16 @@ onMounted(async () => {
           @retry="handleRetry"
         />
         
+        <!-- Starred View -->
+        <StarredView
+          v-else-if="currentView === 'starred'"
+          :user="user"
+          @logout="handleLogout"
+        />
+        
         <!-- Trash View -->
         <TrashView
-          v-else
+          v-else-if="currentView === 'trash'"
           ref="trashViewRef"
           :view-mode="viewMode"
           @item-select="handleItemSelect"

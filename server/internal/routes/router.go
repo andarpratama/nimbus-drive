@@ -10,4 +10,5 @@ func RegisterRoutes(r *gin.Engine) {
 	RegisterFileRoutes(api)
 	RegisterFolderRoutes(api)
 	RegisterUserRoutes(api)
+	RegisterStarredRoutes(api)
 }

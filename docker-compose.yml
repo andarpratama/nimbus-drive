@@ -22,6 +22,8 @@ services:
       - APP_DEBUG=true
       - UPLOAD_DIR=/app/uploads
       - MAX_FILE_SIZE=10485760
+    env_file:
+      - ./server/.env
     command: sh -c "mkdir -p /app/uploads && chmod 755 /app/uploads && air"
     depends_on:
       - db
@@ -40,7 +42,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     env_file:
-      - .env
+      - ./client/.env
     stdin_open: true          # required for Vite HMR
     tty: true
 
@@ -54,8 +56,13 @@ services:
       MYSQL_PASSWORD: secret
     ports:
       - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+
+volumes:
+  mysql_data:

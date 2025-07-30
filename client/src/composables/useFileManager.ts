@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { useFileData } from './useFileData'
 import { useBreadcrumbs } from './useBreadcrumbs'
 import { useSelection } from './useSelection'
+import { useStarred } from './useStarred'
 import { getFileType, formatFileSize, formatDate } from './useFileUtils'
 
 export function useFileManager() {
@@ -9,6 +10,7 @@ export function useFileManager() {
   const fileData = useFileData()
   const breadcrumbs = useBreadcrumbs()
   const selection = useSelection()
+  const starred = useStarred()
 
   // Navigation methods
   const navigateToFolder = async (folderId: string) => {
@@ -26,10 +28,9 @@ export function useFileManager() {
     await breadcrumbs.updateBreadcrumbs(fileData.currentFolder.value)
   }
 
-  // Star management
-  const toggleStar = (itemId: string): void => {
-    const item = fileData.allItems.value.find(i => i.id === itemId)
-    if (item) item.starred = !item.starred
+  // Star management - now uses API
+  const toggleStar = async (item: any): Promise<boolean> => {
+    return await starred.toggleStar(item)
   }
 
   // Re-export everything for backward compatibility

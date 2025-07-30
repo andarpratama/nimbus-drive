@@ -8,6 +8,7 @@ import ConfirmModal from './ConfirmModal.vue'
 import Notification from './Notification.vue'
 import Breadcrumb from './Breadcrumb.vue'
 import { useFileManager } from '../../composables/useFileManager'
+import { useStarred } from '../../composables/useStarred'
 
 // Props to receive user data from parent
 const props = defineProps({
@@ -26,8 +27,8 @@ const {
   currentFolderId,
   currentFolder,
   breadcrumbs,
-  loading,
-  error,
+  loading: fileLoading,
+  error: fileError,
   selectedItems,
   allItems,
   fetchFolderContents,
@@ -36,9 +37,17 @@ const {
   navigateToRoot,
   selectItem,
   isSelected,
-  clearSelection,
-  toggleStar
+  clearSelection
 } = useFileManager()
+
+// Use the starred composable
+const {
+  starredFileItems,
+  loading: starredLoading,
+  error: starredError,
+  fetchStarredItems,
+  toggleStar
+} = useStarred()
 
 // State management
 const currentView = ref('starred')
@@ -70,9 +79,13 @@ const notification = ref({
   message: ''
 })
 
-// Filtered items - only starred items
+// Computed properties for starred view
+const loading = computed(() => starredLoading.value)
+const error = computed(() => starredError.value)
+
+// Filtered items - use starred items from API
 const filteredItems = computed(() => {
-  let items = allItems.value.filter(item => item.starred)
+  let items = starredFileItems.value
   
   if (searchQuery.value) {
     items = items.filter(item => 
@@ -114,12 +127,24 @@ const handleItemDoubleClick = (item) => {
   }
 }
 
-const handleItemStarToggle = (itemId) => {
-  toggleStar(itemId)
+const handleItemStarToggle = async (item) => {
+  try {
+    const success = await toggleStar(item)
+    if (success) {
+      // Refresh starred items after toggle
+      await fetchStarredItems()
+      showNotification('success', 'Star updated', `${item.name} has been ${item.starred ? 'unstarred' : 'starred'}.`)
+    } else {
+      showNotification('error', 'Star update failed', 'Failed to update star status.')
+    }
+  } catch (error) {
+    console.error('Star toggle error:', error)
+    showNotification('error', 'Star update failed', 'An error occurred while updating star status.')
+  }
 }
 
 const handleRetry = () => {
-  fetchFolderContents(currentFolderId.value)
+  fetchStarredItems()
 }
 
 const handleContextMenu = (data) => {
@@ -348,7 +373,7 @@ const handleNotificationClose = () => {
 
 // Initialize on mount
 onMounted(async () => {
-  await navigateToRoot()
+  await fetchStarredItems()
 })
 </script>
 

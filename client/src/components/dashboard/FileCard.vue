@@ -39,7 +39,7 @@ const handleDoubleClick = () => {
 
 const handleStarToggle = (event) => {
   event.stopPropagation()
-  emit('star-toggle', props.item.id)
+  emit('star-toggle', props.item)
 }
 
 const handleContextMenu = (event) => {

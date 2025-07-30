@@ -24,16 +24,36 @@ func main() {
 	}
 	database.ConnectRedis()
 
-	if err := database.DB.AutoMigrate(
-		&models.User{},
-		&models.File{},
-		&models.Folder{},
-		&models.SharedFile{},
-		&models.Session{},
-	); err != nil {
-		log.Fatal("Migration error:", err)
+	// Check if we should reset the database
+	resetDB := os.Getenv("RESET_DB")
+	log.Printf("🔍 RESET_DB environment variable: '%s'", resetDB)
+	if resetDB == "true" {
+		log.Println("🔄 Resetting database...")
+		if err := database.DB.AutoMigrate(
+			&models.User{},
+			&models.File{},
+			&models.Folder{},
+			&models.SharedFile{},
+			&models.Session{},
+			&models.Starred{},
+		); err != nil {
+			log.Fatal("Migration error:", err)
+		}
+		log.Println("✅ Database reset successful")
+	} else {
+		log.Println("📊 Database reset disabled (RESET_DB != true)")
+		// Only run migrations without dropping tables
+		if err := database.DB.AutoMigrate(
+			&models.User{},
+			&models.File{},
+			&models.Folder{},
+			&models.SharedFile{},
+			&models.Session{},
+			&models.Starred{},
+		); err != nil {
+			log.Printf("⚠️ Migration warning (non-critical): %v", err)
+		}
 	}
-	log.Println("✅ AutoMigrate successful")
 
 	// Create Gin router
 	r := gin.Default()

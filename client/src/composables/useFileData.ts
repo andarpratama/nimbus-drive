@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import type { File, Folder, FileItem, FoldersResponse, FilesResponse } from './types'
 import { apiRequest } from './useApi'
 import { getFileType, formatFileSize, formatDate } from './useFileUtils'
+import { useStarred } from './useStarred'
 
 export function useFileData() {
   // State
@@ -11,6 +12,9 @@ export function useFileData() {
   const currentFolder = ref<Folder | null>(null)
   const loading = ref(false)
   const error = ref('')
+  
+  // Use starred composable
+  const starred = useStarred()
 
   // Fetch folder contents
   const fetchFolderContents = async (folderId: string | null = null) => {
@@ -22,6 +26,9 @@ export function useFileData() {
       
       // Update current folder ID
       currentFolderId.value = folderId
+      
+      // Fetch starred items in parallel
+      const starredPromise = starred.fetchStarredItems()
       
       // Fetch folders
       const foldersData = await apiRequest<FoldersResponse>('/api/folders')
@@ -50,6 +57,9 @@ export function useFileData() {
       // Handle null response by defaulting to empty array
       files.value = filesData.files || []
       
+      // Wait for starred items to be fetched
+      await starredPromise
+      
     } catch (err) {
       console.error('Error fetching data:', err)
       error.value = 'Failed to load files and folders'
@@ -76,7 +86,7 @@ export function useFileData() {
         type: 'folder',
         size: totalItems > 0 ? `${totalItems} item${totalItems !== 1 ? 's' : ''}` : 'Empty',
         modified: formatDate(folder.UpdatedAt),
-        starred: false,
+        starred: starred.starredItems.value.some(s => s.folder_id === folder.ID),
         shared: false,
         folderId: folder.ID,
         itemCount: totalItems,
@@ -95,7 +105,7 @@ export function useFileData() {
         type: getFileType(file.Name),
         size: formatFileSize(file.Size),
         modified: formatDate(file.UpdatedAt),
-        starred: false,
+        starred: starred.starredItems.value.some(s => s.file_id === file.ID),
         shared: false,
         fileId: file.ID,
         rawSize: file.Size,
