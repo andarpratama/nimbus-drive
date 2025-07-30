@@ -1,7 +1,5 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import Sidebar from './Sidebar.vue'
-import Toolbar from './Toolbar.vue'
 import ContentArea from './ContentArea.vue'
 import ContextMenu from './ContextMenu.vue'
 import ConfirmModal from './ConfirmModal.vue'
@@ -14,15 +12,22 @@ const props = defineProps({
   user: {
     type: Object,
     default: null
+  },
+  // Props for integration with parent Dashboard
+  searchQuery: {
+    type: String,
+    default: ''
+  },
+  viewMode: {
+    type: String,
+    default: 'grid'
   }
 })
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits(['logout', 'search-change', 'view-mode-change'])
 
 // State
 const currentView = ref('trash')
-const viewMode = ref('grid') // grid, list
-const searchQuery = ref('')
 const trashedItems = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -112,9 +117,9 @@ const previewModal = ref({
 
 // Filtered items based on search
 const filteredItems = computed(() => {
-  if (!searchQuery.value) return trashedItems.value
+  if (!props.searchQuery) return trashedItems.value
   return trashedItems.value.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    item.name.toLowerCase().includes(props.searchQuery.toLowerCase())
   )
 })
 
@@ -129,11 +134,11 @@ const handleViewChange = (viewId) => {
 }
 
 const handleSearchChange = (query) => {
-  searchQuery.value = query
+  emit('search-change', query)
 }
 
 const handleViewModeChange = (mode) => {
-  viewMode.value = mode
+  emit('view-mode-change', mode)
 }
 
 const handleItemSelect = (itemId) => {
@@ -453,27 +458,9 @@ defineExpose({
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- Left Sidebar -->
-    <Sidebar 
-      :current-view="currentView"
-      @view-change="handleViewChange"
-    />
-
-    <!-- Main Content -->
+  <div class="flex-1 flex flex-col">
+    <!-- Content Area -->
     <div class="flex-1 flex flex-col">
-      <!-- Top Toolbar -->
-      <Toolbar 
-        :search-query="searchQuery"
-        :view-mode="viewMode"
-        :user="user"
-        @search-change="handleSearchChange"
-        @view-mode-change="handleViewModeChange"
-        @logout="handleLogout"
-      />
-
-      <!-- Content Area -->
-      <div class="flex-1 flex flex-col">
         <!-- Bulk Actions Header -->
         <div v-if="selectedItems.length > 0" class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div class="flex items-center justify-end space-x-3">
@@ -520,7 +507,7 @@ defineExpose({
           </div>
           
           <!-- Empty state -->
-          <div v-else-if="filteredItems.length === 0 && !searchQuery" class="flex justify-center items-center py-20">
+          <div v-else-if="filteredItems.length === 0 && !props.searchQuery" class="flex justify-center items-center py-20">
             <div class="text-center">
               <div class="text-8xl mb-6">🗑️</div>
               <h3 class="text-xl font-medium text-gray-900 dark:text-white mb-2">
@@ -536,14 +523,14 @@ defineExpose({
           </div>
           
           <!-- Search empty state -->
-          <div v-else-if="filteredItems.length === 0 && searchQuery" class="flex justify-center items-center py-20">
+          <div v-else-if="filteredItems.length === 0 && props.searchQuery" class="flex justify-center items-center py-20">
             <div class="text-center">
               <div class="text-6xl mb-4">🔍</div>
               <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 No items found
               </h3>
               <p class="text-gray-500 dark:text-gray-400">
-                No trashed items match your search "{{ searchQuery }}"
+                No trashed items match your search "{{ props.searchQuery }}"
               </p>
             </div>
           </div>
@@ -559,10 +546,10 @@ defineExpose({
             <ContentArea 
               :items="filteredItems"
               :selected-items="selectedItems"
-              :view-mode="viewMode"
+              :view-mode="props.viewMode"
               :loading="false"
               :error="null"
-              :search-query="searchQuery"
+              :search-query="props.searchQuery"
               @item-select="handleItemSelect"
               @item-double-click="handleItemDoubleClick"
               @item-star-toggle="handleItemStarToggle"
@@ -572,7 +559,6 @@ defineExpose({
           </div>
         </div>
       </div>
-    </div>
     
     <!-- Context Menu -->
     <ContextMenu

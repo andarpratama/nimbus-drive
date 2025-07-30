@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './dashboard/Sidebar.vue'
 import Toolbar from './dashboard/Toolbar.vue'
 import ContentArea from './dashboard/ContentArea.vue'
@@ -25,6 +26,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['logout'])
+
+// Router setup
+const route = useRoute()
+const router = useRouter()
 
 // Handle logout
 const handleLogout = () => {
@@ -65,14 +70,30 @@ const trashViewRef = ref(null)
 const uploadModalRef = ref(null)
 
 // Initialize view from URL on mount
-const initializeViewFromURL = () => {
-  const urlParams = new URLSearchParams(window.location.search)
-  const view = urlParams.get('view') || 'my-drive'
+const initializeViewFromURL = async () => {
+  console.log('Initializing view from URL')
+  console.log('Current route path:', route.path)
+  console.log('Route query:', route.query)
+  
+  // Use route.query for consistency with Vue Router
+  const view = route.query.view || 'my-drive'
+  const folderId = route.query.folder || null
+  
+  console.log('Route query - view:', view, 'folder:', folderId)
+  
   currentView.value = view
   
-  // If we're in trash view, navigate to root first
-  if (view === 'trash') {
+  if (folderId && view === 'my-drive') {
+    console.log('Navigating to folder:', folderId)
+    // Navigate to the specific folder
+    await navigateToFolder(folderId)
+  } else if (view === 'trash') {
+    // If we're in trash view, navigate to root first
     navigateToRoot()
+  } else {
+    console.log('Navigating to root')
+    // Default to root
+    await navigateToRoot()
   }
 }
 
@@ -141,16 +162,25 @@ const filteredItems = computed(() => {
 const handleViewChange = (viewId) => {
   currentView.value = viewId
   
-  // Update URL to reflect current view
-  const url = new URL(window.location)
-  url.searchParams.set('view', viewId)
-  window.history.pushState({}, '', url)
-  
+  // Update URL to reflect current view using router.push for consistency
   if (viewId === 'my-drive') {
-    navigateToRoot()
+    router.push({
+      path: '/dashboard',
+      query: { view: 'my-drive' }
+    })
+    handleNavigateToRoot()
   } else if (viewId === 'starred') {
+    router.push({
+      path: '/dashboard',
+      query: { view: 'starred' }
+    })
     // Reset starred view to root when clicking sidebar link
     starredViewKey.value++
+  } else if (viewId === 'trash') {
+    router.push({
+      path: '/dashboard',
+      query: { view: 'trash' }
+    })
   }
   // Note: starred view is handled by StarredView component
 }
@@ -169,7 +199,8 @@ const handleItemSelect = (itemId) => {
 
 const handleItemDoubleClick = (item) => {
   if (item.type === 'folder') {
-    navigateToFolder(item.folderId)
+    // Use the URL-aware navigation function
+    handleNavigateToFolder(item.folderId)
   } else {
     // Handle file click (preview for images, download for others)
     if (isImageFile(item)) {
@@ -624,28 +655,99 @@ const handleMoveModalClose = () => {
 }
 
 const handleNavigateToFolder = async (folderId) => {
+  console.log('handleNavigateToFolder called with folderId:', folderId)
+  
   // Switch to my-drive view and navigate to the folder
   currentView.value = 'my-drive'
   await navigateToFolder(folderId)
   
-  // Update URL to reflect current view
-  const url = new URL(window.location)
-  url.searchParams.set('view', 'my-drive')
-  window.history.pushState({}, '', url)
+  // Update URL to include folder as query parameter
+  router.push({
+    path: '/dashboard',
+    query: { 
+      view: 'my-drive',
+      folder: folderId 
+    }
+  })
+  
+  console.log('URL updated for folder navigation')
+}
+
+// Custom navigateToRoot function that updates URL
+const handleNavigateToRoot = async () => {
+  await navigateToRoot()
+  // Update URL to go back to dashboard root
+  router.push({
+    path: '/dashboard',
+    query: { view: 'my-drive' }
+  })
+}
+
+// Custom breadcrumb navigation function that updates URL
+const handleNavigateToBreadcrumb = async (folderId) => {
+  await navigateToBreadcrumb(folderId)
+  
+  // Update URL based on folderId
+  if (folderId === null) {
+    // Going to root
+    router.push({
+      path: '/dashboard',
+      query: { view: 'my-drive' }
+    })
+  } else {
+    // Going to specific folder
+    router.push({
+      path: '/dashboard',
+      query: { 
+        view: 'my-drive',
+        folder: folderId 
+      }
+    })
+  }
 }
 
 // Handle browser back/forward buttons
 const handlePopState = () => {
-  initializeViewFromURL()
+  console.log('Pop state detected')
+  // The route watcher will handle the URL changes automatically
+  // No need to manually call initializeViewFromURL here
 }
+
+// Watch for route changes
+watch(() => route.query, async (newQuery, oldQuery) => {
+  console.log('Route query changed:', oldQuery, '->', newQuery)
+  
+  const view = newQuery.view || 'my-drive'
+  const folderId = newQuery.folder || null
+  
+  console.log('New view from query:', view, 'folder:', folderId)
+  
+  // Update current view if it changed
+  if (view !== currentView.value) {
+    currentView.value = view
+  }
+  
+  // Handle folder navigation for my-drive view
+  if (currentView.value === 'my-drive') {
+    if (folderId) {
+      await navigateToFolder(folderId)
+    } else {
+      await navigateToRoot()
+    }
+  }
+}, { immediate: false }) // Don't run immediately to avoid conflicts with initializeViewFromURL
 
 // Initialize on mount
 onMounted(async () => {
-  initializeViewFromURL()
-  await navigateToRoot()
+  await initializeViewFromURL()
   
   // Listen for browser back/forward
   window.addEventListener('popstate', handlePopState)
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  window.removeEventListener('popstate', handlePopState)
 })
 </script>
 
@@ -655,7 +757,7 @@ onMounted(async () => {
     <Sidebar 
       :current-view="currentView"
       @view-change="handleViewChange"
-      @navigate-root="navigateToRoot"
+      @navigate-root="handleNavigateToRoot"
     />
 
     <!-- Main Content -->
@@ -676,7 +778,7 @@ onMounted(async () => {
       <Breadcrumb 
         v-if="currentView === 'my-drive'"
         :breadcrumbs="breadcrumbs"
-        @navigate-breadcrumb="navigateToBreadcrumb"
+        @navigate-breadcrumb="handleNavigateToBreadcrumb"
       />
 
       <!-- Content Area -->
@@ -703,19 +805,28 @@ onMounted(async () => {
           :key="starredViewKey"
           :user="user"
           :reset-key="starredViewKey"
+          :search-query="searchQuery"
+          :view-mode="viewMode"
           @logout="handleLogout"
           @navigate-to-folder="handleNavigateToFolder"
+          @search-change="handleSearchChange"
+          @view-mode-change="handleViewModeChange"
         />
         
         <!-- Trash View -->
         <TrashView
           v-else-if="currentView === 'trash'"
           ref="trashViewRef"
+          :user="user"
+          :search-query="searchQuery"
           :view-mode="viewMode"
+          @logout="handleLogout"
           @item-select="handleItemSelect"
           @item-double-click="handleItemDoubleClick"
           @item-star-toggle="handleItemStarToggle"
           @context-menu="handleContextMenu"
+          @search-change="handleSearchChange"
+          @view-mode-change="handleViewModeChange"
         />
       </div>
     </div>

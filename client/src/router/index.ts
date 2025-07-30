@@ -28,6 +28,7 @@ const routes = [
     component: Dashboard,
     meta: { requiresAuth: true }
   },
+
   {
     path: '/trash',
     name: 'Trash',

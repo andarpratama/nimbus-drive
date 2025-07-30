@@ -1,7 +1,5 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import Sidebar from './Sidebar.vue'
-import Toolbar from './Toolbar.vue'
 import ContentArea from './ContentArea.vue'
 import ContextMenu from './ContextMenu.vue'
 import ConfirmModal from './ConfirmModal.vue'
@@ -20,10 +18,19 @@ const props = defineProps({
   resetKey: {
     type: Number,
     default: 0
+  },
+  // Props for integration with parent Dashboard
+  searchQuery: {
+    type: String,
+    default: ''
+  },
+  viewMode: {
+    type: String,
+    default: 'grid'
   }
 })
 
-const emit = defineEmits(['logout', 'navigate-to-folder'])
+const emit = defineEmits(['logout', 'navigate-to-folder', 'search-change', 'view-mode-change'])
 
 // Use the file manager composable
 const {
@@ -68,8 +75,6 @@ const {
 
 // State management
 const currentView = ref('starred')
-const viewMode = ref('grid') // grid, list
-const searchQuery = ref('')
 const isInFolder = ref(false) // Track if we're viewing folder contents
 
 // Context menu state
@@ -111,9 +116,9 @@ const error = computed(() => starredError.value)
 const filteredItems = computed(() => {
   let items = isInFolder.value ? allItems.value : starredFileItems.value
   
-  if (searchQuery.value) {
+  if (props.searchQuery) {
     items = items.filter(item => 
-      item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+      item.name.toLowerCase().includes(props.searchQuery.toLowerCase())
     )
   }
   
@@ -138,11 +143,11 @@ const handleViewChange = (viewId) => {
 }
 
 const handleSearchChange = (query) => {
-  searchQuery.value = query
+  emit('search-change', query)
 }
 
 const handleViewModeChange = (mode) => {
-  viewMode.value = mode
+  emit('view-mode-change', mode)
 }
 
 const handleItemSelect = (itemId) => {
@@ -473,50 +478,30 @@ watch(() => props.resetKey, () => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- Sidebar -->
-    <Sidebar 
-      :current-view="currentView"
-      @view-change="handleViewChange"
-      @navigate-root="navigateToRoot"
+  <div class="flex-1 flex flex-col">
+    <!-- Breadcrumb -->
+    <Breadcrumb 
+      v-if="isInFolder"
+      :breadcrumbs="starredBreadcrumbs"
+      @navigate-breadcrumb="handleBreadcrumbNavigation"
     />
 
-    <!-- Main Content -->
+    <!-- Content Area -->
     <div class="flex-1 flex flex-col">
-      <!-- Top Toolbar -->
-      <Toolbar 
-        :search-query="searchQuery"
-        :view-mode="viewMode"
-        :user="user"
-        @search-change="handleSearchChange"
-        @view-mode-change="handleViewModeChange"
-        @logout="handleLogout"
-      />
-
-      <!-- Breadcrumb -->
-      <Breadcrumb 
-        v-if="isInFolder"
-        :breadcrumbs="starredBreadcrumbs"
-        @navigate-breadcrumb="handleBreadcrumbNavigation"
-      />
-
       <!-- Content Area -->
-      <div class="flex-1 flex flex-col">
-        <!-- Content Area -->
-        <ContentArea 
-          :items="filteredItems"
-          :selected-items="selectedItems"
-          :view-mode="viewMode"
-          :loading="loading"
-          :error="error"
-          :search-query="searchQuery"
-          @item-select="handleItemSelect"
-          @item-double-click="handleItemDoubleClick"
-          @item-star-toggle="handleItemStarToggle"
-          @context-menu="handleContextMenu"
-          @retry="handleRetry"
-        />
-      </div>
+      <ContentArea 
+        :items="filteredItems"
+        :selected-items="selectedItems"
+        :view-mode="props.viewMode"
+        :loading="loading"
+        :error="error"
+        :search-query="props.searchQuery"
+        @item-select="handleItemSelect"
+        @item-double-click="handleItemDoubleClick"
+        @item-star-toggle="handleItemStarToggle"
+        @context-menu="handleContextMenu"
+        @retry="handleRetry"
+      />
     </div>
     
     <!-- Context Menu -->
