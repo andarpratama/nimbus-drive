@@ -25,6 +25,10 @@ const props = defineProps({
   viewMode: {
     type: String,
     default: 'grid'
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -256,14 +260,24 @@ const closeConfirmModal = () => {
 
 // Watch for prop changes and refetch data
 watch(() => props.resetKey, () => {
-  if (currentView.value === 'recent') {
+  if (props.isActive) {
     fetchRecentFiles()
   }
 })
 
 onMounted(() => {
-  fetchRecentFiles()
+  // Only fetch data if this view is active
+  if (props.isActive) {
+    fetchRecentFiles()
+  }
 })
+
+// Watch for active state changes
+watch(() => props.isActive, (isActive) => {
+  if (isActive) {
+    fetchRecentFiles()
+  }
+}, { immediate: true })
 </script>
 
 <template>

@@ -24,6 +24,10 @@ const props = defineProps({
   viewMode: {
     type: String,
     default: 'grid'
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 const emit = defineEmits(['logout', 'navigate-to-folder', 'search-change', 'view-mode-change'])
@@ -375,12 +379,26 @@ const closePreview = () => {
   previewModal.value.file = null
 }
 onMounted(async () => {
-  await fetchStarredItems()
+  // Only fetch data if this view is active
+  if (props.isActive) {
+    await fetchStarredItems()
+  }
 })
+
 watch(() => props.resetKey, () => {
-  isInFolder.value = false
-  navigateToRoot()
-  fetchStarredItems()
+  // Only fetch data if this view is active
+  if (props.isActive) {
+    isInFolder.value = false
+    navigateToRoot()
+    fetchStarredItems()
+  }
+}, { immediate: true })
+
+// Watch for active state changes
+watch(() => props.isActive, (isActive) => {
+  if (isActive) {
+    fetchStarredItems()
+  }
 }, { immediate: true })
 </script>
 <template>

@@ -74,18 +74,28 @@ const initializeViewFromURL = async () => {
   
   currentView.value = view
   
-  if (folderId && view === 'my-drive') {
-    console.log('Navigating to folder:', folderId)
-    await navigateToFolder(folderId)
+  // Only fetch data for views that actually need it
+  if (view === 'my-drive') {
+    if (folderId) {
+      console.log('Navigating to folder:', folderId)
+      await navigateToFolder(folderId, true)
+    } else {
+      console.log('Navigating to root')
+      await navigateToRoot(true)
+    }
   } else if (view === 'trash') {
-    navigateToRoot()
+    // Trash view needs to fetch its own data
+    console.log('Initializing trash view - TrashView component will handle its own data fetching')
   } else if (view === 'recent') {
-    navigateToRoot()
+    // Recent view needs to fetch its own data
+    console.log('Initializing recent view')
   } else if (view === 'profile') {
-    navigateToRoot()
-  } else {
-    console.log('Navigating to root')
-    await navigateToRoot()
+    // Profile view doesn't need any file/folder data
+    console.log('Initializing profile view - no data fetching needed')
+    // No need to call any file manager functions for profile view
+  } else if (view === 'starred') {
+    // Starred view needs to fetch its own data
+    console.log('Initializing starred view')
   }
 }
 
@@ -753,6 +763,7 @@ onUnmounted(() => {
           :reset-key="starredViewKey"
           :search-query="searchQuery"
           :view-mode="viewMode"
+          :is-active="currentView === 'starred'"
           @logout="handleLogout"
           @navigate-to-folder="handleNavigateToFolder"
           @search-change="handleSearchChange"
@@ -765,6 +776,7 @@ onUnmounted(() => {
           :user="user"
           :search-query="searchQuery"
           :view-mode="viewMode"
+          :is-active="currentView === 'recent'"
           @logout="handleLogout"
           @navigate-to-folder="handleNavigateToFolder"
           @search-change="handleSearchChange"
@@ -775,6 +787,7 @@ onUnmounted(() => {
         <ProfileView
           v-else-if="currentView === 'profile'"
           :user="user"
+          :is-active="currentView === 'profile'"
           @logout="handleLogout"
         />
         
@@ -785,6 +798,7 @@ onUnmounted(() => {
           :user="user"
           :search-query="searchQuery"
           :view-mode="viewMode"
+          :is-active="currentView === 'trash'"
           @logout="handleLogout"
           @item-select="handleItemSelect"
           @item-double-click="handleItemDoubleClick"

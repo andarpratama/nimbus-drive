@@ -17,9 +17,12 @@ const activeTab = ref(getTabFromHash() || 'profile')
 
 // Function to get tab from URL hash
 function getTabFromHash() {
-  const hash = window.location.hash
-  if (hash === '#password') return 'password'
-  if (hash === '#profile') return 'profile'
+  // Only read hash if we're on the profile page
+  if (window.location.search.includes('view=profile')) {
+    const hash = window.location.hash
+    if (hash === '#password') return 'password'
+    if (hash === '#profile') return 'profile'
+  }
   return null
 }
 
@@ -30,7 +33,13 @@ function isValidTab(tab) {
 
 // Function to update URL hash when tab changes
 function updateHash(tab) {
-  window.location.hash = tab
+  // Only update hash if we're already on the profile page
+  if (window.location.search.includes('view=profile')) {
+    console.log('Updating hash to:', tab)
+    window.location.hash = tab
+  } else {
+    console.log('Not on profile page, skipping hash update')
+  }
 }
 const loading = ref(false)
 const error = ref('')
@@ -172,9 +181,12 @@ const switchTab = (tab) => {
 
 // Watch for hash changes (when user navigates with browser back/forward)
 watch(() => window.location.hash, (newHash) => {
-  const tab = getTabFromHash()
-  if (tab && isValidTab(tab) && tab !== activeTab.value) {
-    activeTab.value = tab
+  // Only watch hash changes if we're on the profile page
+  if (window.location.search.includes('view=profile')) {
+    const tab = getTabFromHash()
+    if (tab && isValidTab(tab) && tab !== activeTab.value) {
+      activeTab.value = tab
+    }
   }
 })
 
@@ -189,8 +201,8 @@ onMounted(() => {
   // Initialize form with user data
   initializeProfileForm()
   
-  // Set initial hash if none exists
-  if (!window.location.hash) {
+  // Set initial hash if none exists and we're on the profile page
+  if (window.location.search.includes('view=profile') && !window.location.hash) {
     updateHash(activeTab.value)
   }
 })

@@ -9,16 +9,16 @@ export function useFileManager() {
   const breadcrumbs = useBreadcrumbs()
   const selection = useSelection()
   const starred = useStarred()
-  const navigateToFolder = async (folderId: string) => {
-    await fileData.fetchFolderContents(folderId)
+  const navigateToFolder = async (folderId: string, fetchStarred: boolean = true, skipFileFolderFetch: boolean = false) => {
+    await fileData.fetchFolderContents(folderId, fetchStarred, skipFileFolderFetch)
     await breadcrumbs.updateBreadcrumbs(fileData.currentFolder.value)
   }
-  const navigateToBreadcrumb = async (folderId: string | null) => {
-    await fileData.fetchFolderContents(folderId)
+  const navigateToBreadcrumb = async (folderId: string | null, fetchStarred: boolean = true, skipFileFolderFetch: boolean = false) => {
+    await fileData.fetchFolderContents(folderId, fetchStarred, skipFileFolderFetch)
     await breadcrumbs.updateBreadcrumbs(fileData.currentFolder.value)
   }
-  const navigateToRoot = async () => {
-    await fileData.fetchFolderContents()
+  const navigateToRoot = async (fetchStarred: boolean = true, skipFileFolderFetch: boolean = false) => {
+    await fileData.fetchFolderContents(null, fetchStarred, skipFileFolderFetch)
     await breadcrumbs.updateBreadcrumbs(fileData.currentFolder.value)
   }
   const toggleStar = async (item: any): Promise<boolean> => {

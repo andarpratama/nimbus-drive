@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import ContentArea from './ContentArea.vue'
 import ContextMenu from './ContextMenu.vue'
 import ConfirmModal from './ConfirmModal.vue'
@@ -18,6 +18,10 @@ const props = defineProps({
   viewMode: {
     type: String,
     default: 'grid'
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 const emit = defineEmits(['logout', 'search-change', 'view-mode-change'])
@@ -27,11 +31,13 @@ const loading = ref(false)
 const error = ref('')
 const selectedItems = ref([])
 const fetchTrashedItems = async () => {
+  console.log('fetchTrashedItems called')
   loading.value = true
   error.value = ''
   try {
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     const token = localStorage.getItem('token')
+    console.log('Making API call to:', `${API_BASE_URL}/api/files/trash`)
     const filesResponse = await fetch(`${API_BASE_URL}/api/files/trash`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -348,8 +354,22 @@ const handleBulkPermanentDelete = async () => {
   }
 }
 onMounted(() => {
-  fetchTrashedItems()
+  console.log('TrashView mounted, isActive:', props.isActive)
+  // Always fetch data when mounted if active
+  if (props.isActive) {
+    console.log('TrashView is active, fetching trashed items')
+    fetchTrashedItems()
+  }
 })
+
+// Watch for active state changes
+watch(() => props.isActive, (isActive) => {
+  console.log('TrashView isActive changed to:', isActive)
+  if (isActive) {
+    console.log('TrashView became active, fetching trashed items')
+    fetchTrashedItems()
+  }
+}, { immediate: true })
 defineExpose({
   refresh: fetchTrashedItems
 })
