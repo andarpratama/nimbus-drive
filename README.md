@@ -114,7 +114,7 @@ server/
 
 2. **Start all services**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. **Access the application**
@@ -148,7 +148,13 @@ server/
 ### **Authentication**
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
-- `GET /api/auth/profile` - Get user profile
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/user` - Get current user profile
+
+### **User Management**
+- `GET /api/users/profile` - Get user profile
+- `PUT /api/users/profile` - Update user profile
+- `PUT /api/users/password` - Change user password
 
 ### **Files**
 - `GET /api/files` - List files
@@ -172,6 +178,68 @@ server/
 - `DELETE /api/starred/files/:id/star` - Unstar file
 - `POST /api/starred/folders/:id/star` - Star folder
 - `DELETE /api/starred/folders/:id/star` - Unstar folder
+
+## 📚 API Documentation
+
+### **Authentication Endpoints**
+
+#### **Register User**
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+#### **Login User**
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "john@example.com", // or username
+  "password": "password123"
+}
+```
+
+#### **Logout User**
+```http
+POST /api/auth/logout
+Authorization: Bearer <token>
+```
+
+### **User Management Endpoints**
+
+#### **Update Profile**
+```http
+PUT /api/users/profile
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "bio": "Software Developer"
+}
+```
+
+#### **Change Password**
+```http
+PUT /api/users/password
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "current_password": "oldpassword123",
+  "new_password": "newpassword123"
+}
+```
 
 ## 🛠️ Technology Stack
 
@@ -218,6 +286,8 @@ server/
 - ✅ Responsive design
 - ✅ Context menus
 - ✅ Breadcrumb navigation
+- ✅ Profile management with tab persistence
+- ✅ Password change functionality
 
 ### **Security**
 - ✅ JWT authentication
