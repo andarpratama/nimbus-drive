@@ -5,14 +5,11 @@ const props = defineProps({
     required: true
   }
 })
-
 const emit = defineEmits(['navigate-breadcrumb'])
-
 const handleBreadcrumbClick = (folderId) => {
   emit('navigate-breadcrumb', folderId)
 }
 </script>
-
 <template>
   <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3 shadow-sm">
     <div class="flex items-center space-x-2 text-sm">

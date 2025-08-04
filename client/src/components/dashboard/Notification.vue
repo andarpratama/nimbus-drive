@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -8,7 +7,7 @@ const props = defineProps({
   },
   type: {
     type: String,
-    default: 'success' // success, error, warning, info
+    default: 'success' 
   },
   title: {
     type: String,
@@ -23,12 +22,8 @@ const props = defineProps({
     default: 3000
   }
 })
-
 const emit = defineEmits(['close'])
-
 const isVisible = ref(false)
-
-// Auto-hide after duration
 onMounted(() => {
   if (props.visible && props.duration > 0) {
     setTimeout(() => {
@@ -36,23 +31,17 @@ onMounted(() => {
     }, props.duration)
   }
 })
-
-// Watch for visibility changes
 watch(() => props.visible, (visible) => {
   isVisible.value = visible
-  
-  // Auto-hide after duration when notification becomes visible
   if (visible && props.duration > 0) {
     setTimeout(() => {
       emit('close')
     }, props.duration)
   }
 })
-
 const handleClose = () => {
   emit('close')
 }
-
 const getIcon = () => {
   switch (props.type) {
     case 'success':
@@ -67,10 +56,8 @@ const getIcon = () => {
       return '✅'
   }
 }
-
 const getClasses = () => {
   const baseClasses = 'flex items-center p-4 rounded-lg shadow-lg border-l-4'
-  
   switch (props.type) {
     case 'success':
       return `${baseClasses} bg-green-50 dark:bg-green-900/20 border-green-400 text-green-800 dark:text-green-200`
@@ -85,7 +72,6 @@ const getClasses = () => {
   }
 }
 </script>
-
 <template>
   <Transition
     enter-active-class="transition ease-out duration-300"
@@ -103,7 +89,6 @@ const getClasses = () => {
         <div class="flex-shrink-0 mr-3">
           <span class="text-lg">{{ getIcon() }}</span>
         </div>
-        
         <div class="flex-1">
           <h4 v-if="title" class="text-sm font-medium mb-1">
             {{ title }}
@@ -112,7 +97,6 @@ const getClasses = () => {
             {{ message }}
           </p>
         </div>
-        
         <button
           @click="handleClose"
           class="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"

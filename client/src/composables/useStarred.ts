@@ -4,11 +4,11 @@ import type { FileItem } from './types'
 
 export interface StarredItem {
   id: string
-  type: string // Can be 'folder', 'image', 'document', 'presentation', etc.
+  type: string
   file_id?: string
   folder_id?: string
   name: string
-  size?: string // For files: file size, for folders: item count
+  size?: string
   mime_type?: string
   created_at: string
 }
@@ -27,7 +27,6 @@ export function useStarred() {
   const loading = ref(false)
   const error = ref('')
 
-  // Fetch all starred items
   const fetchStarredItems = async () => {
     loading.value = true
     error.value = ''
@@ -43,7 +42,6 @@ export function useStarred() {
     }
   }
 
-  // Star an item (file or folder)
   const starItem = async (itemId: string, itemType: 'file' | 'folder'): Promise<boolean> => {
     try {
       const response = await apiRequest<StarToggleResponse>('/api/starred', {
@@ -60,7 +58,6 @@ export function useStarred() {
     }
   }
 
-  // Unstar an item (file or folder)
   const unstarItem = async (itemId: string, itemType: 'file' | 'folder'): Promise<boolean> => {
     try {
       const response = await apiRequest<StarToggleResponse>('/api/starred', {
@@ -77,10 +74,8 @@ export function useStarred() {
     }
   }
 
-  // Toggle star for an item (recommended method)
   const toggleStar = async (item: FileItem): Promise<boolean> => {
     try {
-      // Determine if it's a file or folder based on the presence of folderId or fileId
       let itemId: string | undefined
       let itemType: 'file' | 'folder'
       
@@ -109,7 +104,6 @@ export function useStarred() {
     }
   }
 
-  // Legacy methods for backward compatibility
   const starFile = async (fileId: string): Promise<boolean> => {
     return await starItem(fileId, 'file')
   }
@@ -126,9 +120,7 @@ export function useStarred() {
     return await unstarItem(folderId, 'folder')
   }
 
-  // Check if an item is starred (this endpoint might not exist anymore, so we'll check locally)
   const checkStarredStatus = async (itemId: string, type: 'file' | 'folder'): Promise<boolean> => {
-    // Check if the item exists in our starred items list
     return starredItems.value.some(item => {
       if (type === 'file') {
         return item.file_id === itemId
@@ -138,19 +130,15 @@ export function useStarred() {
     })
   }
 
-  // Convert starred items to FileItem format for display
   const starredFileItems = computed<FileItem[]>(() => {
     return starredItems.value.map((item: StarredItem) => {
-      // Handle size for files vs folders
       let displaySize = 'Unknown'
       let rawSize = 0
       
       if (item.type === 'folder' && item.size) {
-        // For folders, use the item count from backend
         displaySize = item.size
-        rawSize = 0 // Folders don't have raw size
+        rawSize = 0
       } else if (item.size) {
-        // For files, use the actual file size
         displaySize = item.size
         rawSize = parseInt(item.size) || 0
       }
@@ -158,7 +146,7 @@ export function useStarred() {
       return {
         id: item.type === 'folder' ? `folder-${item.folder_id}` : `file-${item.file_id}`,
         name: item.name,
-        type: item.type, // Use the actual type from server (image, document, etc.)
+        type: item.type,
         size: displaySize,
         modified: new Date(item.created_at).toLocaleDateString(),
         starred: true,
@@ -171,18 +159,15 @@ export function useStarred() {
   })
 
   return {
-    // State
     starredItems,
     starredFileItems,
     loading,
     error,
     
-    // Methods
     fetchStarredItems,
     starItem,
     unstarItem,
     toggleStar,
-    // Legacy methods for backward compatibility
     starFile,
     unstarFile,
     starFolder,

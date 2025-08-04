@@ -17,7 +17,6 @@ const loading = ref(false)
 const error = ref('')
 const success = ref('')
 
-// Use the correct API URL for Docker environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 const validateForm = () => {
@@ -63,7 +62,6 @@ const handleSubmit = async () => {
     
     if (response.ok) {
       success.value = 'Account created successfully! You can now sign in.'
-      // Clear form
       form.value = {
         name: '',
         username: '',
@@ -71,7 +69,6 @@ const handleSubmit = async () => {
         password: '',
         confirmPassword: ''
       }
-      // Navigate to login after successful registration
       setTimeout(() => {
         router.push('/login')
       }, 2000)

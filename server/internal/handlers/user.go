@@ -1,15 +1,11 @@
 package handlers
-
 import (
 	"net/http"
-
 	"github.com/andarpratama/nimbus-drive/internal/database"
 	"github.com/andarpratama/nimbus-drive/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
-
-// GetCurrentUser handles GET /user to fetch current authenticated user
 func GetCurrentUser(c *gin.Context) {
 	userIDStr := c.GetString("userID")
 	userID, err := uuid.Parse(userIDStr)
@@ -17,14 +13,11 @@ func GetCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
-	
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
-	
-	// Return user data without password
 	c.JSON(http.StatusOK, gin.H{
 		"id":       user.ID,
 		"name":     user.Name,
@@ -32,8 +25,6 @@ func GetCurrentUser(c *gin.Context) {
 		"email":    user.Email,
 	})
 }
-
-// GetAllUsers handles GET /users to fetch all users
 func GetAllUsers(c *gin.Context) {
 	var users []models.User
 	if err := database.DB.Find(&users).Error; err != nil {
@@ -42,8 +33,6 @@ func GetAllUsers(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"users": users})
 }
-
-// GetUserByID handles GET /users/:id to fetch a single user by ID
 func GetUserByID(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := uuid.Parse(idParam)
@@ -51,7 +40,6 @@ func GetUserByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
-
 	var user models.User
 	if err := database.DB.First(&user, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})

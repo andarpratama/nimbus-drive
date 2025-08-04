@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import FileIcon from '../FileIcon.vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -12,60 +11,41 @@ const props = defineProps({
     default: null
   }
 })
-
 const emit = defineEmits(['close', 'upload-complete'])
-
-// State
 const dragActive = ref(false)
 const files = ref([])
 const uploadProgress = ref({})
 const uploading = ref(false)
 const error = ref('')
-
-// File input ref
 const fileInputRef = ref(null)
-
-// Computed
 const hasFiles = computed(() => files.value.length > 0)
 const totalProgress = computed(() => {
   if (files.value.length === 0) return 0
   const total = Object.values(uploadProgress.value).reduce((sum, progress) => sum + progress, 0)
   return Math.round(total / files.value.length)
 })
-
-// Handle file selection
 const handleFileSelect = (event) => {
   const selectedFiles = Array.from(event.target.files)
   addFiles(selectedFiles)
 }
-
-// Add files to upload queue
 const addFiles = (newFiles) => {
   const validFiles = newFiles.filter(file => {
-    // Check file size (max 100MB)
     if (file.size > 100 * 1024 * 1024) {
       error.value = `File "${file.name}" is too large. Maximum size is 100MB.`
       return false
     }
     return true
   })
-  
   files.value.push(...validFiles)
-  
-  // Initialize progress for new files
   validFiles.forEach(file => {
     uploadProgress.value[file.name] = 0
   })
-  
   error.value = ''
 }
-
-// Handle drag and drop
 const handleDrag = (e) => {
   e.preventDefault()
   e.stopPropagation()
 }
-
 const handleDragIn = (e) => {
   e.preventDefault()
   e.stopPropagation()
@@ -73,59 +53,43 @@ const handleDragIn = (e) => {
     dragActive.value = true
   }
 }
-
 const handleDragOut = (e) => {
   e.preventDefault()
   e.stopPropagation()
   dragActive.value = false
 }
-
 const handleDrop = (e) => {
   e.preventDefault()
   e.stopPropagation()
   dragActive.value = false
-  
   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
     addFiles(Array.from(e.dataTransfer.files))
   }
 }
-
-// Remove file from queue
 const removeFile = (index) => {
   const file = files.value[index]
   delete uploadProgress.value[file.name]
   files.value.splice(index, 1)
 }
-
-// Clear all files
 const clearFiles = () => {
   files.value = []
   uploadProgress.value = {}
   error.value = ''
 }
-
-// Upload files
 const uploadFiles = async () => {
   if (files.value.length === 0) return
-  
   uploading.value = true
   error.value = ''
-  
   try {
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     const token = localStorage.getItem('token')
-    
     for (let i = 0; i < files.value.length; i++) {
       const file = files.value[i]
-      
       const formData = new FormData()
       formData.append('file', file)
-      
       if (props.currentFolderId) {
         formData.append('folder_id', props.currentFolderId.toString())
       }
-      
-      // Use fetch instead of XMLHttpRequest for better async handling
       const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
         method: 'POST',
         headers: {
@@ -133,7 +97,6 @@ const uploadFiles = async () => {
         },
         body: formData
       })
-      
       if (response.ok) {
         uploadProgress.value[file.name] = 100
       } else {
@@ -142,12 +105,9 @@ const uploadFiles = async () => {
         throw new Error(`Upload failed for ${file.name}`)
       }
     }
-    
-    // All uploads completed successfully
     emit('upload-complete')
-    clearFiles() // Clear files immediately after successful upload
+    clearFiles() 
     emit('close')
-    
   } catch (err) {
     console.error('Upload error:', err)
     if (!error.value) {
@@ -157,46 +117,31 @@ const uploadFiles = async () => {
     uploading.value = false
   }
 }
-
-// Handle close
 const handleClose = () => {
   if (!uploading.value) {
     clearFiles()
     emit('close')
   }
 }
-
-// Expose reset function to parent
 const resetForm = () => {
   clearFiles()
   uploading.value = false
   error.value = ''
 }
-
-// Expose reset function
 defineExpose({
   resetForm
 })
-
-// Handle escape key
 const handleKeydown = (event) => {
   if (event.key === 'Escape' && !uploading.value) {
     handleClose()
   }
 }
-
-// Add/remove event listeners
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
 })
-
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
-
-
-
-// Format file size
 const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -205,7 +150,6 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 </script>
-
 <template>
   <div
     v-if="visible"
@@ -214,7 +158,6 @@ const formatFileSize = (bytes) => {
   >
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-    
     <!-- Modal -->
     <div
       class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden"
@@ -233,7 +176,6 @@ const formatFileSize = (bytes) => {
           ✕
         </button>
       </div>
-      
       <!-- Content -->
       <div class="p-6">
         <!-- Drag & Drop Area -->
@@ -270,13 +212,11 @@ const formatFileSize = (bytes) => {
             class="hidden"
           />
         </div>
-        
         <!-- File List -->
         <div v-if="hasFiles" class="mt-6">
           <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
             Files to Upload ({{ files.length }})
           </h4>
-          
           <div class="space-y-2 max-h-64 overflow-y-auto">
             <div
               v-for="(file, index) in files"
@@ -296,7 +236,6 @@ const formatFileSize = (bytes) => {
                   </p>
                 </div>
               </div>
-              
               <!-- Progress Bar -->
               <div v-if="uploading" class="flex items-center ml-4">
                 <div class="w-16 h-2 bg-gray-200 dark:bg-gray-600 rounded-full mr-2">
@@ -309,7 +248,6 @@ const formatFileSize = (bytes) => {
                   {{ uploadProgress[file.name] }}%
                 </span>
               </div>
-              
               <!-- Remove Button -->
               <button
                 v-if="!uploading"
@@ -321,13 +259,11 @@ const formatFileSize = (bytes) => {
             </div>
           </div>
         </div>
-        
         <!-- Error Message -->
         <div v-if="error" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
         </div>
       </div>
-      
       <!-- Actions -->
       <div class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button

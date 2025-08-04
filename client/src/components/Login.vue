@@ -7,14 +7,13 @@ const router = useRouter()
 const emit = defineEmits(['login-success'])
 
 const form = ref({
-  identifier: '', // email or username
+  identifier: '',
   password: ''
 })
 
 const loading = ref(false)
 const error = ref('')
 
-// Use the correct API URL for Docker environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 const handleSubmit = async () => {
@@ -34,9 +33,7 @@ const handleSubmit = async () => {
     const data = await response.json()
     
     if (response.ok) {
-      // Store token
       localStorage.setItem('token', data.token)
-      // Emit user data and navigate to dashboard
       emit('login-success', data.user)
     } else {
       error.value = data.error || 'Login failed'

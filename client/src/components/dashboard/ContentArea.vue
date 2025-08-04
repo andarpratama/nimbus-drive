@@ -1,7 +1,6 @@
 <script setup>
 import FileGrid from './FileGrid.vue'
 import FileList from './FileList.vue'
-
 const props = defineProps({
   items: {
     type: Array,
@@ -28,7 +27,6 @@ const props = defineProps({
     default: ''
   }
 })
-
 const emit = defineEmits([
   'item-select', 
   'item-double-click', 
@@ -36,35 +34,27 @@ const emit = defineEmits([
   'retry',
   'context-menu'
 ])
-
 const handleItemSelect = (itemId) => {
   emit('item-select', itemId)
 }
-
 const handleItemDoubleClick = (item) => {
   emit('item-double-click', item)
 }
-
 const handleItemStarToggle = (itemId) => {
   emit('item-star-toggle', itemId)
 }
-
 const handleContextMenu = (data) => {
   emit('context-menu', data)
 }
-
 const handleEmptySpaceContextMenu = (event) => {
-  // Only trigger if clicking on the content area itself, not on items
   if (event.target === event.currentTarget) {
     emit('context-menu', { event, item: null })
   }
 }
-
 const handleRetry = () => {
   emit('retry')
 }
 </script>
-
 <template>
   <div 
     class="flex-1 p-6 overflow-auto"
@@ -74,7 +64,6 @@ const handleRetry = () => {
     <div v-if="loading" class="flex justify-center items-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
-    
     <!-- Error state -->
     <div v-else-if="error" class="text-center py-12">
       <div class="text-red-600 dark:text-red-400 mb-4">{{ error }}</div>
@@ -85,7 +74,6 @@ const handleRetry = () => {
         Try Again
       </button>
     </div>
-    
     <!-- Content -->
     <div v-else>
       <!-- Grid View -->
@@ -98,7 +86,6 @@ const handleRetry = () => {
         @item-star-toggle="handleItemStarToggle"
         @context-menu="handleContextMenu"
       />
-
       <!-- List View -->
       <FileList
         v-else
@@ -109,7 +96,6 @@ const handleRetry = () => {
         @item-star-toggle="handleItemStarToggle"
         @context-menu="handleContextMenu"
       />
-
       <!-- Empty state -->
       <div v-if="items.length === 0 && !loading" class="text-center py-12">
         <div class="text-6xl mb-4">📁</div>

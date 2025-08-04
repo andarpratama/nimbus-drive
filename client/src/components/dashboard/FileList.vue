@@ -1,6 +1,5 @@
 <script setup>
 import FileListItem from './FileListItem.vue'
-
 const props = defineProps({
   items: {
     type: Array,
@@ -11,26 +10,20 @@ const props = defineProps({
     required: true
   }
 })
-
 const emit = defineEmits(['item-select', 'item-double-click', 'item-star-toggle', 'context-menu'])
-
 const handleItemSelect = (itemId) => {
   emit('item-select', itemId)
 }
-
 const handleItemDoubleClick = (item) => {
   emit('item-double-click', item)
 }
-
 const handleItemStarToggle = (itemId) => {
   emit('item-star-toggle', itemId)
 }
-
 const handleContextMenu = (data) => {
   emit('context-menu', data)
 }
 </script>
-
 <template>
   <div class="space-y-1">
     <FileListItem

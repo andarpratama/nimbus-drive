@@ -1,18 +1,14 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-
 const router = useRouter()
-
 const props = defineProps({
   currentView: {
     type: String,
     required: true
   }
 })
-
 const emit = defineEmits(['view-change', 'navigate-root'])
-
 const navigationItems = [
   { id: 'my-drive', label: 'My Drive', icon: '📁', route: '/dashboard' },
   { id: 'shared', label: 'Shared with me', icon: '👥', route: '/shared' },
@@ -20,7 +16,6 @@ const navigationItems = [
   { id: 'starred', label: 'Starred', icon: '⭐', route: '/starred' },
   { id: 'trash', label: 'Trash', icon: '🗑️', route: '/trash' }
 ]
-
 const handleViewChange = (viewId) => {
   const item = navigationItems.find(nav => nav.id === viewId)
   if (item) {
@@ -33,14 +28,12 @@ const handleViewChange = (viewId) => {
   }
 }
 </script>
-
 <template>
   <div class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
     <!-- Logo/Brand -->
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Nimbus Drive</h1>
     </div>
-    
     <!-- Navigation -->
     <nav class="flex-1 p-4 space-y-2">
       <button 
@@ -58,7 +51,6 @@ const handleViewChange = (viewId) => {
         {{ item.label }}
       </button>
     </nav>
-    
     <!-- Storage Info -->
     <div class="p-4 border-t border-gray-200 dark:border-gray-700">
       <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">Storage</div>

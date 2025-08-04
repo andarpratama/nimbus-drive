@@ -1,40 +1,35 @@
 import { Ref } from 'vue'
-
-// Core data types
 export interface File {
   ID: string
   Name: string
   Size: number
   UpdatedAt: string
-  updated_at?: string  // GORM might return this as snake_case
+  updated_at?: string  
   UserID: string
-  user_id?: string     // GORM might return this as snake_case
+  user_id?: string     
   FolderID?: string
-  folder_id?: string   // GORM might return this as snake_case
+  folder_id?: string   
   Path: string
   deleted_at?: string
 }
-
 export interface Folder {
   ID: string
   Name: string
   ParentID?: string
-  parent_id?: string  // GORM might return this as snake_case
+  parent_id?: string  
   UserID: string
-  user_id?: string    // GORM might return this as snake_case
+  user_id?: string    
   UpdatedAt: string
-  updated_at?: string  // GORM might return this as snake_case
+  updated_at?: string  
   file_count?: number
   subfolder_count?: number
   total_items?: number
   deleted_at?: string
 }
-
 export interface Breadcrumb {
   id: string | null
   name: string
 }
-
 export interface FileItem {
   id: string
   name: string
@@ -51,21 +46,15 @@ export interface FileItem {
   rawSize?: number
   deletedAt?: string
 }
-
-// API response types - allow null values to match actual API response
 export interface FoldersResponse {
   folders: Folder[] | null
 }
-
 export interface FilesResponse {
   files: File[] | null
 }
-
 export interface FolderResponse {
   folder: Folder
 }
-
-// State types
 export interface FileManagerState {
   files: Ref<File[]>
   folders: Ref<Folder[]>

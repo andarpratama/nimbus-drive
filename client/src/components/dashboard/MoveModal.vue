@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -11,42 +10,32 @@ const props = defineProps({
     default: null
   }
 })
-
 const emit = defineEmits(['close', 'move'])
-
 const selectedFolderId = ref(null)
 const folders = ref([])
 const loading = ref(false)
 const error = ref('')
 const currentPath = ref([])
 const currentFolderId = ref(null)
-
-// Handle escape key to close modal
 const handleKeydown = (event) => {
   if (event.key === 'Escape') {
     emit('close')
   }
 }
-
-// Fetch folders for the tree view
 const fetchFolders = async () => {
   try {
     loading.value = true
     error.value = ''
-    
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     const token = localStorage.getItem('token')
-    
     const response = await fetch(`${API_BASE_URL}/api/folders`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
-    
     if (response.ok) {
       const data = await response.json()
-      // Filter out the current folder and its descendants to prevent circular moves
       folders.value = data.folders.filter(folder => {
         if (!props.item) return true
         if (props.item.type === 'folder' && folder.ID === props.item.folderId) return false
@@ -63,23 +52,16 @@ const fetchFolders = async () => {
     loading.value = false
   }
 }
-
-// Get root folders (folders with no parent)
 const rootFolders = computed(() => {
   return folders.value.filter(folder => !folder.ParentID)
 })
-
-// Get subfolders of a specific folder
 const getSubfolders = (parentId) => {
   return folders.value.filter(folder => folder.ParentID === parentId)
 }
-
-// Navigate to a folder
 const navigateToFolder = (folderId) => {
   const folder = folders.value.find(f => f.ID === folderId)
   if (folder) {
     currentFolderId.value = folderId
-    // Update path
     const newPath = []
     let currentFolder = folder
     while (currentFolder) {
@@ -89,47 +71,34 @@ const navigateToFolder = (folderId) => {
     currentPath.value = newPath
   }
 }
-
-// Navigate to root
 const navigateToRoot = () => {
   currentFolderId.value = null
   currentPath.value = []
 }
-
-// Select a folder as destination
 const selectFolder = (folderId) => {
   selectedFolderId.value = folderId
 }
-
-// Handle move action
 const handleMove = async () => {
   if (!props.item) return
-  
   try {
     loading.value = true
     error.value = ''
-    
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     const token = localStorage.getItem('token')
-    
     let url, method, body
-    
     if (props.item.type === 'folder') {
-      // Move folder
       url = `${API_BASE_URL}/api/folders/${props.item.folderId}/move`
       method = 'PATCH'
       body = JSON.stringify({
         new_parent_id: selectedFolderId.value
       })
     } else {
-      // Move file
       url = `${API_BASE_URL}/api/files/${props.item.fileId}/move`
       method = 'PUT'
       body = JSON.stringify({
         folder_id: selectedFolderId.value
       })
     }
-    
     const response = await fetch(url, {
       method,
       headers: {
@@ -138,7 +107,6 @@ const handleMove = async () => {
       },
       body
     })
-    
     if (response.ok) {
       const data = await response.json()
       emit('move', { success: true, data })
@@ -154,15 +122,11 @@ const handleMove = async () => {
     loading.value = false
   }
 }
-
-// Handle cancel
 const handleCancel = () => {
   selectedFolderId.value = null
   error.value = ''
   emit('close')
 }
-
-// Reset state when modal opens/closes
 watch(() => props.visible, (newVisible) => {
   if (newVisible) {
     selectedFolderId.value = null
@@ -172,36 +136,27 @@ watch(() => props.visible, (newVisible) => {
     fetchFolders()
   }
 })
-
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
 })
-
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
-
-// Get current folder's subfolders
 const currentSubfolders = computed(() => {
   if (!currentFolderId.value) {
     return rootFolders.value
   }
   return getSubfolders(currentFolderId.value)
 })
-
-// Get selected folder name
 const selectedFolderName = computed(() => {
   if (!selectedFolderId.value) return 'Root Folder'
   const folder = folders.value.find(f => f.ID === selectedFolderId.value)
   return folder ? folder.Name : 'Unknown Folder'
 })
-
-// Check if folder is selected
 const isFolderSelected = (folderId) => {
   return selectedFolderId.value === folderId
 }
 </script>
-
 <template>
   <div
     v-if="visible"
@@ -226,7 +181,6 @@ const isFolderSelected = (folderId) => {
           </svg>
         </button>
       </div>
-
       <!-- Content -->
       <div class="flex-1 overflow-hidden">
         <div class="p-6">
@@ -234,7 +188,6 @@ const isFolderSelected = (folderId) => {
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Move "{{ item?.name }}" to:
             </p>
-            
             <!-- Breadcrumb -->
             <div class="flex items-center space-x-2 mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <button
@@ -255,7 +208,6 @@ const isFolderSelected = (folderId) => {
                 </button>
               </span>
             </div>
-
             <!-- Folder List -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg max-h-96 overflow-y-auto">
               <!-- Root option -->
@@ -278,7 +230,6 @@ const isFolderSelected = (folderId) => {
                   </svg>
                 </div>
               </div>
-
               <!-- Folders -->
               <div
                 v-for="folder in currentSubfolders"
@@ -315,7 +266,6 @@ const isFolderSelected = (folderId) => {
                   </div>
                 </div>
               </div>
-
               <!-- Empty state -->
               <div v-if="currentSubfolders.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
                 <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,7 +274,6 @@ const isFolderSelected = (folderId) => {
                 <p class="text-sm">No folders in this location</p>
               </div>
             </div>
-
             <!-- Selected destination -->
             <div v-if="selectedFolderId !== null || selectedFolderId === null" class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p class="text-sm text-blue-800 dark:text-blue-200">
@@ -332,12 +281,10 @@ const isFolderSelected = (folderId) => {
               </p>
             </div>
           </div>
-
           <!-- Error message -->
           <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
           </div>
-
           <!-- Loading indicator -->
           <div v-if="loading" class="mb-4 flex items-center justify-center">
             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -345,7 +292,6 @@ const isFolderSelected = (folderId) => {
           </div>
         </div>
       </div>
-
       <!-- Footer -->
       <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button

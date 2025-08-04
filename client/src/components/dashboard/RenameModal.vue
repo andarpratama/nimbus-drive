@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -11,42 +10,30 @@ const props = defineProps({
     default: null
   }
 })
-
 const emit = defineEmits(['close', 'rename-success'])
-
 const newName = ref('')
 const loading = ref(false)
 const error = ref('')
-
-// Reset form when modal opens/closes
 watch(() => props.visible, (newVal) => {
   if (newVal && props.item) {
-    // For files, show only the filename without extension
     if (props.item.type !== 'folder') {
       newName.value = getFilenameWithoutExtension(props.item.name) || ''
     } else {
-      // For folders, show the full name
       newName.value = props.item.name || ''
     }
     error.value = ''
   }
 })
-
-// Helper function to get filename without extension
 const getFilenameWithoutExtension = (filename) => {
   if (!filename) return ''
   const lastDotIndex = filename.lastIndexOf('.')
   return lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename
 }
-
-// Helper function to get file extension
 const getFileExtension = (filename) => {
   if (!filename) return ''
   const lastDotIndex = filename.lastIndexOf('.')
   return lastDotIndex > 0 ? filename.substring(lastDotIndex) : ''
 }
-
-// Focus input when modal opens
 watch(() => props.visible, async (newVal) => {
   if (newVal && props.item) {
     await nextTick()
@@ -54,50 +41,38 @@ watch(() => props.visible, async (newVal) => {
       const input = document.getElementById('rename-input')
       if (input) {
         input.focus()
-        
-        // For files, select only the filename part (without extension)
         if (props.item.type !== 'folder') {
           const filenameWithoutExt = getFilenameWithoutExtension(props.item.name)
           const startPos = 0
           const endPos = filenameWithoutExt.length
-          
           input.setSelectionRange(startPos, endPos)
         } else {
-          // For folders, select all text
           input.select()
         }
       }
     }, 50)
   }
 }, { immediate: true })
-
 const handleSubmit = async () => {
   if (!newName.value.trim()) {
     error.value = 'Name cannot be empty'
     return
   }
-
   loading.value = true
   error.value = ''
-
   try {
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     const token = localStorage.getItem('token')
-    
-    // For files, reconstruct the full filename with extension
     let finalName = newName.value.trim()
     if (props.item.type !== 'folder') {
       const originalExtension = getFileExtension(props.item.name)
-      // Only add extension if user didn't type it
       if (!finalName.includes('.') && originalExtension) {
         finalName = finalName + originalExtension
       }
     }
-    
     const endpoint = props.item.type === 'folder' 
       ? `${API_BASE_URL}/api/folders/${props.item.folderId}/rename`
       : `${API_BASE_URL}/api/files/${props.item.fileId}/rename`
-    
     const response = await fetch(endpoint, {
       method: 'PATCH',
       headers: {
@@ -108,9 +83,7 @@ const handleSubmit = async () => {
         name: finalName
       })
     })
-
     const data = await response.json()
-
     if (response.ok) {
       emit('rename-success', {
         ...props.item,
@@ -127,13 +100,11 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
-
 const handleClose = () => {
   if (!loading.value) {
     emit('close')
   }
 }
-
 const handleKeydown = (event) => {
   if (event.key === 'Escape' && !loading.value) {
     handleClose()
@@ -142,7 +113,6 @@ const handleKeydown = (event) => {
   }
 }
 </script>
-
 <template>
   <div
     v-if="visible"
@@ -151,7 +121,6 @@ const handleKeydown = (event) => {
   >
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-    
     <!-- Modal -->
     <div
       class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4"
@@ -170,7 +139,6 @@ const handleKeydown = (event) => {
           ✕
         </button>
       </div>
-      
       <!-- Content -->
       <div class="p-6">
         <div class="mb-4">
@@ -187,7 +155,6 @@ const handleKeydown = (event) => {
             :placeholder="item?.type === 'folder' ? 'Enter new folder name' : 'Enter new filename (extension will be preserved)'"
           />
         </div>
-        
         <!-- Help text for files -->
         <div v-if="item?.type !== 'folder'" class="mb-4">
           <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -200,13 +167,11 @@ const handleKeydown = (event) => {
             </span>
           </p>
         </div>
-        
         <!-- Error Message -->
         <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
         </div>
       </div>
-      
       <!-- Actions -->
       <div class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button

@@ -1,15 +1,11 @@
 package handlers
-
 import (
 	"os"
 	"time"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
-
 var jwtKey = []byte(os.Getenv("JWT_SECRET"))
-
 func GenerateJWT(userID uuid.UUID) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID.String(),
@@ -18,7 +14,6 @@ func GenerateJWT(userID uuid.UUID) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtKey)
 }
-
 func ValidateJWT(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil

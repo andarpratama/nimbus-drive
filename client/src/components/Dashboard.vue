@@ -6,6 +6,7 @@ import Toolbar from './dashboard/Toolbar.vue'
 import ContentArea from './dashboard/ContentArea.vue'
 import TrashView from './dashboard/TrashView.vue'
 import StarredView from './dashboard/StarredView.vue'
+import RecentView from './dashboard/RecentView.vue'
 import ContextMenu from './dashboard/ContextMenu.vue'
 import ConfirmModal from './dashboard/ConfirmModal.vue'
 import Notification from './dashboard/Notification.vue'
@@ -17,7 +18,6 @@ import RenameModal from './dashboard/RenameModal.vue'
 import MoveModal from './dashboard/MoveModal.vue'
 import { useFileManager } from '../composables/useFileManager'
 
-// Props to receive user data from parent
 const props = defineProps({
   user: {
     type: Object,
@@ -27,16 +27,12 @@ const props = defineProps({
 
 const emit = defineEmits(['logout'])
 
-// Router setup
 const route = useRoute()
 const router = useRouter()
 
-// Handle logout
 const handleLogout = () => {
   emit('logout')
 }
-
-// Use the file manager composable
 const {
   files,
   folders,
@@ -57,25 +53,19 @@ const {
   toggleStar
 } = useFileManager()
 
-// State management
-const currentView = ref('my-drive') // my-drive, shared, recent, starred, trash
-const viewMode = ref('grid') // grid, list
+const currentView = ref('my-drive')
+const viewMode = ref('grid')
 const searchQuery = ref('')
-const starredViewKey = ref(0) // Key to force StarredView reset
+const starredViewKey = ref(0)
 
-// Ref for TrashView component
 const trashViewRef = ref(null)
 
-// Ref for UploadModal component
 const uploadModalRef = ref(null)
-
-// Initialize view from URL on mount
 const initializeViewFromURL = async () => {
   console.log('Initializing view from URL')
   console.log('Current route path:', route.path)
   console.log('Route query:', route.query)
   
-  // Use route.query for consistency with Vue Router
   const view = route.query.view || 'my-drive'
   const folderId = route.query.folder || null
   
@@ -85,19 +75,17 @@ const initializeViewFromURL = async () => {
   
   if (folderId && view === 'my-drive') {
     console.log('Navigating to folder:', folderId)
-    // Navigate to the specific folder
     await navigateToFolder(folderId)
   } else if (view === 'trash') {
-    // If we're in trash view, navigate to root first
+    navigateToRoot()
+  } else if (view === 'recent') {
     navigateToRoot()
   } else {
     console.log('Navigating to root')
-    // Default to root
     await navigateToRoot()
   }
 }
 
-// Context menu state
 const contextMenu = ref({
   visible: false,
   x: 0,
@@ -105,7 +93,6 @@ const contextMenu = ref({
   item: null
 })
 
-// Confirmation modal state
 const confirmModal = ref({
   visible: false,
   title: '',
@@ -114,7 +101,6 @@ const confirmModal = ref({
   action: ''
 })
 
-// Notification state
 const notification = ref({
   visible: false,
   type: 'success',
@@ -122,35 +108,28 @@ const notification = ref({
   message: ''
 })
 
-// Upload modal state
 const uploadModal = ref({
   visible: false
 })
 
-// New folder modal state
 const newFolderModal = ref({
   visible: false
 })
 
-// Preview modal state
 const previewModal = ref({
   visible: false,
   file: null
 })
 
-// Rename modal state
 const renameModal = ref({
   visible: false,
   item: null
 })
 
-// Move modal state
 const moveModal = ref({
   visible: false,
   item: null
 })
-
-// Filtered items based on search
 const filteredItems = computed(() => {
   if (!searchQuery.value) return allItems.value
   return allItems.value.filter(item => 
@@ -158,11 +137,9 @@ const filteredItems = computed(() => {
   )
 })
 
-// Event handlers
 const handleViewChange = (viewId) => {
   currentView.value = viewId
   
-  // Update URL to reflect current view using router.push for consistency
   if (viewId === 'my-drive') {
     router.push({
       path: '/dashboard',
@@ -174,15 +151,18 @@ const handleViewChange = (viewId) => {
       path: '/dashboard',
       query: { view: 'starred' }
     })
-    // Reset starred view to root when clicking sidebar link
     starredViewKey.value++
+  } else if (viewId === 'recent') {
+    router.push({
+      path: '/dashboard',
+      query: { view: 'recent' }
+    })
   } else if (viewId === 'trash') {
     router.push({
       path: '/dashboard',
       query: { view: 'trash' }
     })
   }
-  // Note: starred view is handled by StarredView component
 }
 
 const handleSearchChange = (query) => {
@@ -199,35 +179,31 @@ const handleItemSelect = (itemId) => {
 
 const handleItemDoubleClick = (item) => {
   if (item.type === 'folder') {
-    // Use the URL-aware navigation function
     handleNavigateToFolder(item.folderId)
   } else {
-    // Handle file click (preview for images, download for others)
     if (isImageFile(item)) {
       openPreview(item)
     } else {
       console.log('File clicked:', item)
-      // TODO: Implement download functionality
     }
   }
 }
 
 const handleItemStarToggle = async (item) => {
-  try {
-    const success = await toggleStar(item)
-    if (success) {
-      // Refresh the current view data
-      if (currentView.value === 'my-drive') {
-        await fetchFolderContents(currentFolderId.value)
+      try {
+      const success = await toggleStar(item)
+      if (success) {
+        if (currentView.value === 'my-drive') {
+          await fetchFolderContents(currentFolderId.value)
+        }
+        showNotification('success', 'Star updated', `${item.name} has been ${item.starred ? 'unstarred' : 'starred'}.`)
+      } else {
+        showNotification('error', 'Star update failed', 'Failed to update star status.')
       }
-      showNotification('success', 'Star updated', `${item.name} has been ${item.starred ? 'unstarred' : 'starred'}.`)
-    } else {
-      showNotification('error', 'Star update failed', 'Failed to update star status.')
+    } catch (error) {
+      console.error('Star toggle error:', error)
+      showNotification('error', 'Star update failed', 'An error occurred while updating star status.')
     }
-  } catch (error) {
-    console.error('Star toggle error:', error)
-    showNotification('error', 'Star update failed', 'An error occurred while updating star status.')
-  }
 }
 
 const handleRetry = () => {
@@ -237,15 +213,12 @@ const handleRetry = () => {
 const handleContextMenu = (data) => {
   const { event, item } = data
   
-  // Adjust position for three dots button to prevent overlap
   let x = event.clientX
   let y = event.clientY
   
-  // If it's a click event (three dots button), adjust position
   if (event.type === 'click') {
-    // Position menu to the left of the button to avoid overlap
-    x = event.clientX - 200 // Adjust based on menu width
-    y = event.clientY + 10  // Small offset below the button
+    x = event.clientX - 200
+    y = event.clientY + 10
   }
   
   contextMenu.value = {
@@ -264,7 +237,6 @@ const handleContextMenuAction = (data) => {
   const { action, item } = data
   console.log('Context menu action:', action, 'on item:', item)
   
-  // Handle different actions
   switch (action) {
     case 'rename':
       openRenameModal(item)
@@ -362,7 +334,6 @@ const deleteItem = async (item) => {
     })
     
     if (response.ok) {
-      // Show success notification
       notification.value = {
         visible: true,
         type: 'success',
@@ -370,10 +341,8 @@ const deleteItem = async (item) => {
         message: `${item.type === 'folder' ? 'Folder' : 'File'} "${item.name}" has been deleted.`
       }
       
-      // Refresh the current folder contents
       await fetchFolderContents(currentFolderId.value)
       
-      // Clear selection
       clearSelection()
     } else {
       const errorData = await response.json()
@@ -382,7 +351,6 @@ const deleteItem = async (item) => {
   } catch (error) {
     console.error('Delete error:', error)
     
-    // Show error notification
     notification.value = {
       visible: true,
       type: 'error',
@@ -418,7 +386,6 @@ const restoreItem = async (item) => {
     })
     
     if (response.ok) {
-      // Show success notification
       notification.value = {
         visible: true,
         type: 'success',
@@ -426,18 +393,14 @@ const restoreItem = async (item) => {
         message: `${item.type === 'folder' ? 'Folder' : 'File'} "${item.name}" has been restored.`
       }
       
-      // Refresh the current view
       if (currentView.value === 'trash') {
-        // Refresh trash view
         if (trashViewRef.value) {
           trashViewRef.value.refresh()
         }
       } else {
-        // Refresh the current folder contents
         await fetchFolderContents(currentFolderId.value)
       }
       
-      // Clear selection
       clearSelection()
     } else {
       const errorData = await response.json()
@@ -446,7 +409,6 @@ const restoreItem = async (item) => {
   } catch (error) {
     console.error('Restore error:', error)
     
-    // Show error notification
     notification.value = {
       visible: true,
       type: 'error',
@@ -474,7 +436,6 @@ const permanentlyDeleteItem = async (item) => {
     })
     
     if (response.ok) {
-      // Show success notification
       notification.value = {
         visible: true,
         type: 'success',
@@ -482,15 +443,12 @@ const permanentlyDeleteItem = async (item) => {
         message: `${item.type === 'folder' ? 'Folder' : 'File'} "${item.name}" has been permanently deleted.`
       }
       
-      // Refresh the current view
       if (currentView.value === 'trash') {
-        // Refresh trash view
         if (trashViewRef.value) {
           trashViewRef.value.refresh()
         }
       }
       
-      // Clear selection
       clearSelection()
     } else {
       const errorData = await response.json()
@@ -499,7 +457,6 @@ const permanentlyDeleteItem = async (item) => {
   } catch (error) {
     console.error('Permanent delete error:', error)
     
-    // Show error notification
     notification.value = {
       visible: true,
       type: 'error',
@@ -519,14 +476,12 @@ const handleUploadFiles = () => {
 
 const handleUploadClose = () => {
   uploadModal.value.visible = false
-  // Reset the upload modal form
   if (uploadModalRef.value) {
     uploadModalRef.value.resetForm()
   }
 }
 
 const handleUploadComplete = async () => {
-  // Show success notification
   notification.value = {
     visible: true,
     type: 'success',
@@ -534,11 +489,9 @@ const handleUploadComplete = async () => {
     message: 'Files have been uploaded successfully.'
   }
   
-  // Refresh the current folder contents
   await fetchFolderContents(currentFolderId.value)
 }
 
-// Helper functions
 const isImageFile = (item) => {
   if (!item || item.type === 'folder') return false
   const imageTypes = ['image', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
@@ -565,7 +518,6 @@ const handleRenameSuccess = (updatedItem) => {
   console.log('Current folders:', folders.value)
   console.log('Current files:', files.value)
   
-  // Update the files/folders arrays based on type
   if (updatedItem.type === 'folder') {
     const folderIndex = folders.value.findIndex(f => f.ID === updatedItem.folderId)
     console.log('Folder index found:', folderIndex)
@@ -582,7 +534,6 @@ const handleRenameSuccess = (updatedItem) => {
     }
   }
   
-  // Show success notification
   showNotification('success', 'Item Renamed', `"${updatedItem.name}" has been renamed successfully.`)
 }
 
@@ -609,7 +560,6 @@ const handleNewFolderModalClose = () => {
 }
 
 const handleFolderCreated = async (folder) => {
-  // Show success notification
   notification.value = {
     visible: true,
     type: 'success',
@@ -617,7 +567,6 @@ const handleFolderCreated = async (folder) => {
     message: `Folder "${folder.Name}" has been created.`
   }
   
-  // Refresh the current folder contents
   await fetchFolderContents(currentFolderId.value)
 }
 
@@ -634,7 +583,6 @@ const openMoveModal = (item) => {
 }
 
 const handleMoveSuccess = async (result) => {
-  // Show success notification
   notification.value = {
     visible: true,
     type: 'success',
@@ -642,10 +590,8 @@ const handleMoveSuccess = async (result) => {
     message: `${moveModal.value.item.type === 'folder' ? 'Folder' : 'File'} "${moveModal.value.item.name}" has been moved successfully.`
   }
   
-  // Refresh the current folder contents
   await fetchFolderContents(currentFolderId.value)
   
-  // Clear selection
   clearSelection()
 }
 
@@ -657,11 +603,9 @@ const handleMoveModalClose = () => {
 const handleNavigateToFolder = async (folderId) => {
   console.log('handleNavigateToFolder called with folderId:', folderId)
   
-  // Switch to my-drive view and navigate to the folder
   currentView.value = 'my-drive'
   await navigateToFolder(folderId)
   
-  // Update URL to include folder as query parameter
   router.push({
     path: '/dashboard',
     query: { 
@@ -673,29 +617,23 @@ const handleNavigateToFolder = async (folderId) => {
   console.log('URL updated for folder navigation')
 }
 
-// Custom navigateToRoot function that updates URL
 const handleNavigateToRoot = async () => {
   await navigateToRoot()
-  // Update URL to go back to dashboard root
   router.push({
     path: '/dashboard',
     query: { view: 'my-drive' }
   })
 }
 
-// Custom breadcrumb navigation function that updates URL
 const handleNavigateToBreadcrumb = async (folderId) => {
   await navigateToBreadcrumb(folderId)
   
-  // Update URL based on folderId
   if (folderId === null) {
-    // Going to root
     router.push({
       path: '/dashboard',
       query: { view: 'my-drive' }
     })
   } else {
-    // Going to specific folder
     router.push({
       path: '/dashboard',
       query: { 
@@ -706,14 +644,10 @@ const handleNavigateToBreadcrumb = async (folderId) => {
   }
 }
 
-// Handle browser back/forward buttons
 const handlePopState = () => {
   console.log('Pop state detected')
-  // The route watcher will handle the URL changes automatically
-  // No need to manually call initializeViewFromURL here
 }
 
-// Watch for route changes
 watch(() => route.query, async (newQuery, oldQuery) => {
   console.log('Route query changed:', oldQuery, '->', newQuery)
   
@@ -722,12 +656,10 @@ watch(() => route.query, async (newQuery, oldQuery) => {
   
   console.log('New view from query:', view, 'folder:', folderId)
   
-  // Update current view if it changed
   if (view !== currentView.value) {
     currentView.value = view
   }
   
-  // Handle folder navigation for my-drive view
   if (currentView.value === 'my-drive') {
     if (folderId) {
       await navigateToFolder(folderId)
@@ -735,17 +667,14 @@ watch(() => route.query, async (newQuery, oldQuery) => {
       await navigateToRoot()
     }
   }
-}, { immediate: false }) // Don't run immediately to avoid conflicts with initializeViewFromURL
+}, { immediate: false })
 
-// Initialize on mount
 onMounted(async () => {
   await initializeViewFromURL()
   
-  // Listen for browser back/forward
   window.addEventListener('popstate', handlePopState)
 })
 
-// Cleanup on unmount
 onUnmounted(() => {
   window.removeEventListener('popstate', handlePopState)
 })
@@ -805,6 +734,18 @@ onUnmounted(() => {
           :key="starredViewKey"
           :user="user"
           :reset-key="starredViewKey"
+          :search-query="searchQuery"
+          :view-mode="viewMode"
+          @logout="handleLogout"
+          @navigate-to-folder="handleNavigateToFolder"
+          @search-change="handleSearchChange"
+          @view-mode-change="handleViewModeChange"
+        />
+        
+        <!-- Recent View -->
+        <RecentView
+          v-else-if="currentView === 'recent'"
+          :user="user"
           :search-query="searchQuery"
           :view-mode="viewMode"
           @logout="handleLogout"

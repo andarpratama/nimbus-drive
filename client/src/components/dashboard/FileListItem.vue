@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 import FileIcon from '../FileIcon.vue'
-
 const props = defineProps({
   item: {
     type: Object,
@@ -12,49 +11,36 @@ const props = defineProps({
     default: false
   }
 })
-
 const emit = defineEmits(['select', 'double-click', 'star-toggle', 'context-menu'])
-
-// Check if file is an image
 const isImage = computed(() => {
   return props.item.type === 'image'
 })
-
-// Get image URL for preview
 const getImageUrl = computed(() => {
   if (!isImage.value || !props.item.fileId) return null
-  
-  // Construct the image URL for the image
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
   return `${API_BASE_URL}/api/files/${props.item.fileId}/image`
 })
-
 const handleClick = () => {
   emit('select', props.item.id)
 }
-
 const handleDoubleClick = () => {
   emit('double-click', props.item)
 }
-
 const handleStarToggle = (event) => {
   event.stopPropagation()
   emit('star-toggle', props.item)
 }
-
 const handleContextMenu = (event) => {
   event.preventDefault()
   event.stopPropagation()
   emit('context-menu', { event, item: props.item })
 }
-
 const handleMoreOptionsClick = (event) => {
   event.preventDefault()
   event.stopPropagation()
   emit('context-menu', { event, item: props.item })
 }
 </script>
-
 <template>
   <div
     @click="handleClick"
@@ -78,7 +64,6 @@ const handleMoreOptionsClick = (event) => {
         <span v-if="isSelected" class="text-white text-xs">✓</span>
       </div>
     </div>
-    
     <!-- File icon or image preview -->
     <div class="mr-4">
       <!-- Image preview -->
@@ -95,7 +80,6 @@ const handleMoreOptionsClick = (event) => {
         <div v-else class="text-2xl">📁</div>
       </div>
     </div>
-    
     <!-- File info -->
     <div class="flex-1 min-w-0">
       <div class="flex items-center">
@@ -116,12 +100,10 @@ const handleMoreOptionsClick = (event) => {
         {{ item.size }} • {{ item.modified }}
       </div>
     </div>
-    
     <!-- Shared indicator -->
     <div v-if="item.shared" class="mr-3 text-blue-600">
       👥
     </div>
-    
     <!-- More options -->
     <button 
       @click="handleMoreOptionsClick"

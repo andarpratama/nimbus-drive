@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from 'vue'
-
 const isOpen = ref(false)
 const folders = ref([
   { id: 1, name: 'Documents', files: 5 },
@@ -8,7 +7,6 @@ const folders = ref([
   { id: 3, name: 'Work', files: 8 }
 ])
 </script>
-
 <template>
   <div class="space-y-6">
     <!-- Header Section -->
@@ -29,7 +27,6 @@ const folders = ref([
         </button>
       </div>
     </div>
-
     <!-- Folders Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
@@ -55,7 +52,6 @@ const folders = ref([
         </div>
       </div>
     </div>
-
     <!-- Form Example -->
     <div class="card">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Create New Folder</h3>

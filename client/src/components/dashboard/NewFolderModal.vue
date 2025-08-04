@@ -14,7 +14,6 @@
           ✕
         </button>
       </div>
-
       <!-- Content -->
       <div class="p-6">
         <div class="mb-4">
@@ -36,10 +35,7 @@
             {{ error }}
           </p>
         </div>
-
-
       </div>
-
       <!-- Footer -->
       <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button
@@ -61,28 +57,23 @@
     </div>
   </Transition>
 </template>
-
 <style scoped>
 /* Modal fade animation */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.3s ease;
 }
-
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
 }
-
 .modal-fade-enter-to,
 .modal-fade-leave-from {
   opacity: 1;
 }
 </style>
-
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -93,20 +84,15 @@ const props = defineProps({
     default: null
   }
 })
-
 const emit = defineEmits(['close', 'folder-created'])
-
 const folderName = ref('')
 const error = ref('')
 const loading = ref(false)
-
-// Reset form when modal opens
 watch(() => props.visible, (newVisible) => {
   if (newVisible) {
     folderName.value = ''
     error.value = ''
     loading.value = false
-    // Auto-focus the input field
     nextTick(() => {
       const input = document.getElementById('folderName')
       if (input) {
@@ -115,48 +101,37 @@ watch(() => props.visible, (newVisible) => {
     })
   }
 })
-
 const validateFolderName = () => {
   const name = folderName.value.trim()
-  
   if (!name) {
     error.value = 'Folder name is required'
     return false
   }
-  
   if (name.length > 255) {
     error.value = 'Folder name must be less than 255 characters'
     return false
   }
-  
-  // Check for invalid characters
   const invalidChars = /[<>:"/\\|?*]/
   if (invalidChars.test(name)) {
     error.value = 'Folder name contains invalid characters'
     return false
   }
-  
   error.value = ''
   return true
 }
-
 const handleCreate = async () => {
   if (!validateFolderName()) {
     return
   }
-
   loading.value = true
   error.value = ''
-
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     const token = localStorage.getItem('token')
-    
     const payload = {
       name: folderName.value.trim(),
       parent_id: props.currentFolder?.ID || null
     }
-
     const response = await fetch(`${API_BASE_URL}/api/folders`, {
       method: 'POST',
       headers: {
@@ -165,7 +140,6 @@ const handleCreate = async () => {
       },
       body: JSON.stringify(payload)
     })
-
     if (response.ok) {
       const data = await response.json()
       emit('folder-created', data.folder)
@@ -181,11 +155,9 @@ const handleCreate = async () => {
     loading.value = false
   }
 }
-
 const handleClose = () => {
   emit('close')
 }
-
 const handleBackdropClick = () => {
   emit('close')
 }

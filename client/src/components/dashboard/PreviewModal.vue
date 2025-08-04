@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -11,38 +10,31 @@ const props = defineProps({
     default: null
   }
 })
-
 const emit = defineEmits(['close'])
-
 const isImage = computed(() => {
   if (!props.file) return false
   const imageTypes = ['image', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
   return imageTypes.includes(props.file.type)
 })
-
 const imageUrl = computed(() => {
   if (!props.file || !isImage.value) return ''
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
   return `${API_BASE_URL}/api/files/${props.file.fileId}/image`
 })
-
 const handleClose = () => {
   emit('close')
 }
-
 const handleBackdropClick = (event) => {
   if (event.target === event.currentTarget) {
     handleClose()
   }
 }
-
 const handleKeydown = (event) => {
   if (event.key === 'Escape') {
     handleClose()
   }
 }
 </script>
-
 <template>
   <div 
     v-if="visible" 
@@ -70,7 +62,6 @@ const handleKeydown = (event) => {
           <span class="text-2xl">×</span>
         </button>
       </div>
-
       <!-- Content -->
       <div class="flex-1 overflow-auto">
         <!-- Image Preview -->
@@ -82,7 +73,6 @@ const handleKeydown = (event) => {
             @error="$event.target.style.display = 'none'"
           />
         </div>
-
         <!-- Unsupported File Type -->
         <div v-else class="flex justify-center items-center py-12">
           <div class="text-center">
@@ -96,7 +86,6 @@ const handleKeydown = (event) => {
           </div>
         </div>
       </div>
-
       <!-- Footer -->
       <div class="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
         <div class="text-sm text-gray-500 dark:text-gray-400">
@@ -114,7 +103,6 @@ const handleKeydown = (event) => {
     </div>
   </div>
 </template>
-
 <style scoped>
 /* Focus styles for keyboard navigation */
 div:focus {

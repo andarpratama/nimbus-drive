@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch } from 'vue'
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -27,29 +26,21 @@ const props = defineProps({
     default: false
   }
 })
-
 const emit = defineEmits(['confirm', 'cancel', 'close'])
-
 const handleConfirm = () => {
   emit('confirm')
 }
-
 const handleCancel = () => {
   emit('cancel')
 }
-
 const handleClose = () => {
   emit('close')
 }
-
-// Close on escape key
 const handleKeydown = (event) => {
   if (event.key === 'Escape') {
     handleClose()
   }
 }
-
-// Add/remove event listener
 watch(() => props.visible, (visible) => {
   if (visible) {
     document.addEventListener('keydown', handleKeydown)
@@ -58,7 +49,6 @@ watch(() => props.visible, (visible) => {
   }
 })
 </script>
-
 <template>
   <div
     v-if="visible"
@@ -67,7 +57,6 @@ watch(() => props.visible, (visible) => {
   >
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-    
     <!-- Modal -->
     <div
       class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4"
@@ -85,14 +74,12 @@ watch(() => props.visible, (visible) => {
           ✕
         </button>
       </div>
-      
       <!-- Content -->
       <div class="p-6">
         <p class="text-gray-600 dark:text-gray-300">
           {{ message }}
         </p>
       </div>
-      
       <!-- Actions -->
       <div class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button

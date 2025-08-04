@@ -4,6 +4,7 @@ import Register from '../components/Register.vue'
 import Dashboard from '../components/Dashboard.vue'
 import TrashView from '../components/dashboard/TrashView.vue'
 import StarredView from '../components/dashboard/StarredView.vue'
+import RecentView from '../components/dashboard/RecentView.vue'
 
 const routes = [
   {
@@ -28,7 +29,6 @@ const routes = [
     component: Dashboard,
     meta: { requiresAuth: true }
   },
-
   {
     path: '/trash',
     name: 'Trash',
@@ -40,19 +40,21 @@ const routes = [
     name: 'Starred',
     component: StarredView,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/recent',
+    name: 'Recent',
+    component: RecentView,
+    meta: { requiresAuth: true }
   }
 ]
-
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
-
-// Navigation guard to check authentication
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const isAuthenticated = !!token
-  
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
   } else if (to.path === '/login' && isAuthenticated) {
@@ -63,5 +65,4 @@ router.beforeEach((to, from, next) => {
     next()
   }
 })
-
 export default router 

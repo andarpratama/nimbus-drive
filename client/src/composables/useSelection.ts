@@ -3,7 +3,7 @@ import { ref } from 'vue'
 export function useSelection() {
   const selectedItems = ref<string[]>([])
 
-  // Selection management
+  
   const selectItem = (itemId: string): void => {
     const index = selectedItems.value.indexOf(itemId)
     if (index > -1) {

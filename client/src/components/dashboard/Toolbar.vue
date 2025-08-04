@@ -2,7 +2,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import ThemeToggle from '../ThemeToggle.vue'
 import { useDropdownManager } from '../../composables/useDropdownManager'
-
 const props = defineProps({
   searchQuery: {
     type: String,
@@ -17,7 +16,6 @@ const props = defineProps({
     default: null
   }
 })
-
 const emit = defineEmits([
   'search-change', 
   'view-mode-change', 
@@ -27,68 +25,49 @@ const emit = defineEmits([
   'upload-files',
   'new-folder'
 ])
-
-// Use dropdown manager
 const { openDropdown, closeAllDropdowns, isDropdownOpen } = useDropdownManager()
-
-// Dropdown IDs
 const DROPDOWN_IDS = {
   CREATE: 'create-menu',
   UPLOAD: 'upload-menu',
   USER: 'user-menu'
 }
-
 const handleSearchChange = (event) => {
   emit('search-change', event.target.value)
 }
-
 const handleViewModeChange = (mode) => {
   emit('view-mode-change', mode)
 }
-
-
-
 const handleLogout = () => {
   closeAllDropdowns()
   emit('logout')
 }
-
 const toggleCreateMenu = () => {
   const isOpen = openDropdown(DROPDOWN_IDS.CREATE)
   emit('create-menu-toggle', isOpen)
 }
-
 const handleNewFolder = () => {
   closeAllDropdowns()
   emit('new-folder')
 }
-
 const toggleUploadMenu = () => {
   const isOpen = openDropdown(DROPDOWN_IDS.UPLOAD)
   emit('upload-menu-toggle', isOpen)
 }
-
 const toggleUserMenu = () => {
   openDropdown(DROPDOWN_IDS.USER)
 }
-
-// Close dropdowns when clicking outside
 const handleClickOutside = (event) => {
   if (!event.target.closest('.dropdown-container')) {
     closeAllDropdowns()
   }
 }
-
-// Add click outside listener
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
-
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
-
 <template>
   <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
     <div class="flex items-center justify-between">
@@ -106,7 +85,6 @@ onUnmounted(() => {
           <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
         </div>
       </div>
-      
       <!-- Right side: Actions -->
       <div class="flex items-center space-x-2">
         <!-- View toggle -->
@@ -134,10 +112,8 @@ onUnmounted(() => {
             ☰
           </button>
         </div>
-        
         <!-- Theme toggle -->
         <ThemeToggle />
-        
         <!-- Create button -->
         <div class="relative dropdown-container">
           <button
@@ -146,7 +122,6 @@ onUnmounted(() => {
           >
             + New
           </button>
-          
           <!-- Create dropdown -->
           <div v-if="isDropdownOpen(DROPDOWN_IDS.CREATE)" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
@@ -168,7 +143,6 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        
         <!-- Upload button -->
         <div class="relative dropdown-container">
           <button
@@ -177,7 +151,6 @@ onUnmounted(() => {
           >
             ↑ Upload
           </button>
-          
           <!-- Upload dropdown -->
           <div v-if="isDropdownOpen(DROPDOWN_IDS.UPLOAD)" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
@@ -193,7 +166,6 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        
         <!-- User menu -->
         <div v-if="user" class="relative dropdown-container">
           <button
@@ -206,7 +178,6 @@ onUnmounted(() => {
             </div>
             <!-- <span>▼</span> -->
           </button>
-          
           <!-- User dropdown -->
           <div v-if="isDropdownOpen(DROPDOWN_IDS.USER)" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
             <div class="py-1">
