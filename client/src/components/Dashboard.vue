@@ -7,6 +7,7 @@ import ContentArea from './dashboard/ContentArea.vue'
 import TrashView from './dashboard/TrashView.vue'
 import StarredView from './dashboard/StarredView.vue'
 import RecentView from './dashboard/RecentView.vue'
+import ProfileView from './dashboard/ProfileView.vue'
 import ContextMenu from './dashboard/ContextMenu.vue'
 import ConfirmModal from './dashboard/ConfirmModal.vue'
 import Notification from './dashboard/Notification.vue'
@@ -79,6 +80,8 @@ const initializeViewFromURL = async () => {
   } else if (view === 'trash') {
     navigateToRoot()
   } else if (view === 'recent') {
+    navigateToRoot()
+  } else if (view === 'profile') {
     navigateToRoot()
   } else {
     console.log('Navigating to root')
@@ -157,6 +160,11 @@ const handleViewChange = (viewId) => {
       path: '/dashboard',
       query: { view: 'recent' }
     })
+  } else if (viewId === 'profile') {
+    router.push({
+      path: '/dashboard',
+      query: { view: 'profile' }
+    })
   } else if (viewId === 'trash') {
     router.push({
       path: '/dashboard',
@@ -171,6 +179,14 @@ const handleSearchChange = (query) => {
 
 const handleViewModeChange = (mode) => {
   viewMode.value = mode
+}
+
+const handleProfile = () => {
+  currentView.value = 'profile'
+  router.push({
+    path: '/dashboard',
+    query: { view: 'profile' }
+  })
 }
 
 const handleItemSelect = (itemId) => {
@@ -701,6 +717,7 @@ onUnmounted(() => {
         @logout="handleLogout"
         @upload-files="handleUploadFiles"
         @new-folder="openNewFolderModal"
+        @profile="handleProfile"
       />
 
       <!-- Breadcrumb -->
@@ -752,6 +769,13 @@ onUnmounted(() => {
           @navigate-to-folder="handleNavigateToFolder"
           @search-change="handleSearchChange"
           @view-mode-change="handleViewModeChange"
+        />
+        
+        <!-- Profile View -->
+        <ProfileView
+          v-else-if="currentView === 'profile'"
+          :user="user"
+          @logout="handleLogout"
         />
         
         <!-- Trash View -->

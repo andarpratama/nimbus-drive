@@ -5,6 +5,7 @@ import Dashboard from '../components/Dashboard.vue'
 import TrashView from '../components/dashboard/TrashView.vue'
 import StarredView from '../components/dashboard/StarredView.vue'
 import RecentView from '../components/dashboard/RecentView.vue'
+import ProfileView from '../components/dashboard/ProfileView.vue'
 
 const routes = [
   {
@@ -45,6 +46,12 @@ const routes = [
     path: '/recent',
     name: 'Recent',
     component: RecentView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: ProfileView,
     meta: { requiresAuth: true }
   }
 ]

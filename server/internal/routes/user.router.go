@@ -4,12 +4,9 @@ import (
 	"github.com/andarpratama/nimbus-drive/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
-func RegisterUserRoutes(r *gin.RouterGroup) {
-	users := r.Group("/users")
-	users.Use(
-		middleware.AuthMiddleware(),
-		middleware.RequireRoles("admin", "superadmin"),
-	)
-	users.GET("", handlers.GetAllUsers)
-	users.GET("/:id", handlers.GetUserByID)
+func RegisterUserRoutes(rg *gin.RouterGroup) {
+	rg.GET("/users", middleware.AuthMiddleware(), handlers.GetAllUsers)
+	rg.GET("/users/:id", middleware.AuthMiddleware(), handlers.GetUserByID)
+	rg.PUT("/users/profile", middleware.AuthMiddleware(), handlers.UpdateProfile)
+	rg.PUT("/users/password", middleware.AuthMiddleware(), handlers.UpdatePassword)
 }

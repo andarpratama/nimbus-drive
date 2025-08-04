@@ -23,7 +23,8 @@ const emit = defineEmits([
   'create-menu-toggle',
   'upload-menu-toggle',
   'upload-files',
-  'new-folder'
+  'new-folder',
+  'profile'
 ])
 const { openDropdown, closeAllDropdowns, isDropdownOpen } = useDropdownManager()
 const DROPDOWN_IDS = {
@@ -40,6 +41,11 @@ const handleViewModeChange = (mode) => {
 const handleLogout = () => {
   closeAllDropdowns()
   emit('logout')
+}
+
+const handleProfile = () => {
+  closeAllDropdowns()
+  emit('profile')
 }
 const toggleCreateMenu = () => {
   const isOpen = openDropdown(DROPDOWN_IDS.CREATE)
@@ -184,6 +190,12 @@ onUnmounted(() => {
               <div class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                 {{ user.email }}
               </div>
+              <button 
+                @click="handleProfile"
+                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                👤 Profile
+              </button>
               <button 
                 @click="handleLogout"
                 class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
